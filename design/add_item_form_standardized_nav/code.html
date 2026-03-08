@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>PrepTrack - Add Frozen Meal</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<!-- Main Container -->
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark max-w-md mx-auto overflow-x-hidden border-x border-slate-200 dark:border-slate-800">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="size-9 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">kitchen</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">PrepTrack</h1>
+</div>
+<div class="flex gap-2">
+<button class="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark"></span>
+</button>
+</div>
+</header>
+<!-- Form Content -->
+<div class="flex flex-col gap-6 p-4 pb-32">
+<!-- Meal Name Section -->
+<section class="flex flex-col gap-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Meal Details</label>
+<div class="relative flex w-full items-stretch rounded-xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 focus-within:border-primary transition-colors">
+<input class="w-full bg-transparent border-none focus:ring-0 p-4 text-base font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="e.g. Beef Lasagna" value=""/>
+<div class="flex items-center pr-4 text-slate-400">
+<span class="material-symbols-outlined">history</span>
+</div>
+</div>
+</section>
+<!-- Portions Counter -->
+<section class="flex items-center justify-between p-4 rounded-xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<span class="text-base font-semibold">Portions</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-lg">remove</span>
+</button>
+<span class="text-xl font-bold w-6 text-center">1</span>
+<button class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-lg">add</span>
+</button>
+</div>
+</section>
+<!-- Category Chips -->
+<section class="flex flex-col gap-3">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Category</label>
+<div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
+<button class="shrink-0 px-4 py-2 rounded-full bg-primary text-white text-sm font-medium">Meals</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium">Soups</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium">Sauces</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium">Baked Goods</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium">Ingredients</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium">Other</button>
+</div>
+</section>
+<!-- Dates Section -->
+<section class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Freeze Date</label>
+<button class="flex items-center gap-2 p-3 rounded-xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">
+<span class="material-symbols-outlined text-primary text-xl">calendar_today</span>
+<span class="text-sm font-medium">Today</span>
+</button>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expiry Date</label>
+<button class="flex items-center gap-2 p-3 rounded-xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">
+<span class="material-symbols-outlined text-amber-500 text-xl">event_upcoming</span>
+<span class="text-sm font-medium">In 3 Months</span>
+</button>
+</div>
+</section>
+<!-- Mealie Integration -->
+<section class="flex items-center justify-between p-4 rounded-xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center size-10 rounded-lg bg-emerald-500/10 text-emerald-500">
+<span class="material-symbols-outlined">link</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold">Link Mealie Recipe</span>
+<span class="text-xs text-slate-500">Sync details automatically</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</section>
+<!-- Notes Section -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<label class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Notes</label>
+<span class="material-symbols-outlined text-slate-400 text-sm">keyboard_arrow_down</span>
+</div>
+<textarea class="w-full bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-sm font-normal focus:ring-primary focus:border-primary placeholder:text-slate-500" placeholder="Add specific storage instructions or ingredients..." rows="3"></textarea>
+</section>
+<!-- Image/Visual Hint (Optional for Inventory Look) -->
+<div class="relative h-40 w-full rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+<img class="w-full h-full object-cover opacity-60" data-alt="Gourmet meal in a container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1WDbm2YU6rxy_akKuKcZrLuBa9Sxi2Sv19u_7OJGPMAwbhoETq0OO1--lpkS2qL-kEGPxUxPHqZHk8zdR1AM_YqiD63ewYVtxwg8LP54ZgDZ3K6ZM66MuI1pKCHmYpPKz8bkutXUl3UYvdtkZ-WlxdwY3ajs4Us1ZD9dySRKvJmKGPThsR3CPl2JlEYzlSMeQHzbzekyol-9q3IysROIyKdZ3P8IYJNEtmhsEZmRk0xCgO6tKDTy6RbrJAG-21fV4T_yotB9-pXeu"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/80 to-transparent flex items-end p-4">
+<button class="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20 text-xs font-semibold text-white">
+<span class="material-symbols-outlined text-sm">photo_camera</span>
+                        Add Photo
+                    </button>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action -->
+<div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-4 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-20">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined">ac_unit</span>
+                Add to Freezer
+            </button>
+</div>
+</div>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+        }
+    </style>
+</body></html>

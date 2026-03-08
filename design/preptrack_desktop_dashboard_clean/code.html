@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PrepTrack Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#0a0f14",
+                        "accent-teal": "#14b8a6",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-background-dark z-20">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div>
+<h1 class="font-bold text-lg tracking-tight">PrepTrack</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Inventory Manager</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+                    Dashboard
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+                    Meal Plan
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">restaurant_menu</span>
+                    Recipes
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+                    Shopping List
+                </a>
+<div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+                        Support
+                    </a>
+</div>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-[#0d131a]">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark flex items-center justify-between px-8 shrink-0 z-10">
+<div class="flex-1 max-w-xl">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="Search meals, ingredients, or labels..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+</button>
+<div class="h-8 w-px bg-slate-200 dark:border-slate-800"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-semibold">Alex Rivera</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Meal Prepper</p>
+</div>
+<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/20" data-alt="User profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc9Hu7EyOMzJzYoDUaOzKw5GkIjgqvI_lquKC73BQKQ2xaQicIAHSqY4Rc7Tey8zwXLp8Lb-nGSVe1koCloVwRiMl0QZFuXcil6_xXsPO3a7uwRmXKoiY2VXYhzEsr2N1wbNUeGB9CO2n3RS485C5XcZf4BjDItkMXLY5nzrL1bZHOtKeMx5-5Ioc2x1MtEX-bNvQvrG40rJPWuWTTCgDgiPccDGwVXdVkhbB7GrwSvVzFhhGypDjDgGNLBQQVxhB_VYlBTbznj6Xj"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
+<!-- Summary Bar -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">inventory</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 dark:text-slate-400">Total Items</p>
+<p class="text-2xl font-bold">124 <span class="text-xs font-normal text-green-500 ml-1">+12%</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500">
+<span class="material-symbols-outlined">hourglass_empty</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 dark:text-slate-400">Expiring Soon</p>
+<p class="text-2xl font-bold">8 <span class="text-xs font-normal text-slate-400 ml-1">next 48h</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+<div class="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
+<span class="material-symbols-outlined">event_busy</span>
+</div>
+<div>
+<p class="text-sm text-slate-500 dark:text-slate-400">Expired</p>
+<p class="text-2xl font-bold">2 <span class="text-xs font-normal text-red-400 ml-1">-5%</span></p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center mb-2">
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Weekly Coverage</p>
+<span class="text-xs font-bold text-primary">85%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%] rounded-full"></div>
+</div>
+<p class="text-[10px] text-slate-400 mt-2 italic">6 of 7 days covered</p>
+</div>
+</section>
+<!-- Pending Actions -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold">Pending Actions</h2>
+<button class="text-sm text-primary font-medium hover:underline">View All Alerts</button>
+</div>
+<div class="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+<!-- Action Card 1 -->
+<div class="flex-shrink-0 w-80 bg-white dark:bg-slate-900 rounded-xl border-l-4 border-amber-500 p-4 shadow-sm border border-slate-200 dark:border-slate-800">
+<div class="flex gap-4">
+<img class="w-20 h-20 rounded-lg object-cover" data-alt="Healthy chicken pesto pasta meal prep" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKB2LUBuAle5c6gZ53QNqQ7ZpofByt5I7h--RdgEkAxChFS7_vWd-uxx1g3gvYQegTaOo5cIo9JA9oyE3jtShUFTN4nEQsv6DUOJBG6dDX68ZVhZ6_bIcLnwc9wpthMZGvOnGKFlT0v9hvVp5uU_0_ywJX0Comn3hi1mjHYyUBjdOcnUQkn3h91yqcum2YlaIY6vAdYk500glHSRTRsyOFivE0mgPdPSbQED-YhuIQkZhTm3WzX_AFAunh65EyEEXbPkZNiz1boQJR"/>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase text-amber-500">Tomorrow's Lunch</span>
+<button class="text-slate-400"><span class="material-symbols-outlined text-sm">close</span></button>
+</div>
+<h3 class="font-bold text-sm mt-1">Chicken Pesto Pasta</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Ready to heat. Contains dairy.</p>
+<button class="mt-3 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-xs font-bold rounded flex items-center gap-1 hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xs">restaurant</span> Log Consumption
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Action Card 2 -->
+<div class="flex-shrink-0 w-80 bg-white dark:bg-slate-900 rounded-xl border-l-4 border-primary p-4 shadow-sm border border-slate-200 dark:border-slate-800">
+<div class="flex gap-4">
+<img class="w-20 h-20 rounded-lg object-cover" data-alt="Beef stir fry with vegetables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwqiVN6ctYtp7uExfdWMysgSsGp2wdCRB73RmV3ZwsPtNP8XJIre2eiyJjnZ4BwqL6e2GXi0C8NYfKDWocubgt4vRpIqCJIdhkv2hLALC6JP0jD_lrI46cSsV3tBu2s_arXTeSDd2-sKsXWX5tGpN6Cis2FZ0ZvIrRZuUftuZ2u_Zsg-Hszsgx143MaqeJng63dG3ombuDaSI_RLhzLBG1VFrKzFeDdt3mqa60LEtknpxkyme1lTze1hpgxti-IjIxEEd_pnevSkab"/>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase text-primary">Tonight's Dinner</span>
+<button class="text-slate-400"><span class="material-symbols-outlined text-sm">close</span></button>
+</div>
+<h3 class="font-bold text-sm mt-1">Beef Stir Fry</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Defrosting recommended now.</p>
+<button class="mt-3 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded flex items-center gap-1 hover:bg-primary/90 transition-colors shadow-sm shadow-primary/20">
+<span class="material-symbols-outlined text-xs">ac_unit</span> Mark Defrosting
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Inventory Section -->
+<section class="space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<h2 class="text-lg font-bold">Frozen Inventory</h2>
+<span class="px-2 py-0.5 bg-slate-200 dark:bg-slate-800 rounded-full text-[10px] font-bold text-slate-500 dark:text-slate-400">42 ITEMS</span>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<button class="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-sm">add</span> Add Meal
+                            </button>
+<div class="h-6 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
+<button class="px-3 py-1.5 border border-slate-200 dark:border-slate-800 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Sort: Newest</button>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+<button class="px-4 py-2 bg-primary text-white rounded-full text-xs font-bold shadow-sm">All Meals</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Expiring Soon</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Recently Added</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Breakfast</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Lunch</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Dinner</button>
+<button class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-medium hover:border-primary transition-colors">Snacks</button>
+</div>
+<!-- Inventory Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+<!-- Meal Card 1 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-primary/50 transition-all shadow-sm hover:shadow-md">
+<div class="relative h-32 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="Spicy turkey chili in containers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBX-5qsc9IZABfRbZ6nbDqHZarHrNb9kep0azxw0Q27CuhcsUnOykHwROWXL1J5vl_64Qlh1ZFxL6mblLacT0MRPDkUel8NwRGPwuXReVaF2Deh75nhYKzA3n5yxuZlfdInRMHc30jFuFeZc6-Ab7PSdle2KGvBIPDkloIc5qZ5asfMseca8qT7WMXiVei_cNPxQaX08X1eX0OPRliC3Inq0xop6dyfP4SJPsHkvGRxV0S_Azgm0mAuGVfRbg6mfqddad25ipxX_rBI"/>
+<div class="absolute top-2 right-2 px-2 py-1 bg-background-dark/80 backdrop-blur rounded text-[10px] font-bold text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">calendar_month</span> Oct 12
+                                </div>
+<div class="absolute bottom-2 left-2 flex gap-1">
+<span class="px-2 py-0.5 bg-accent-teal rounded text-[10px] font-bold text-white">Low Carb</span>
+</div>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm leading-tight">Spicy Turkey Chili</h3>
+<div class="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[10px] font-bold border border-green-500/20">
+                                        12 Days Left
+                                    </div>
+</div>
+<div class="flex items-end justify-between mt-4">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Portions</p>
+<p class="text-xl font-black text-primary">04</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Meal Card 2 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-primary/50 transition-all shadow-sm hover:shadow-md">
+<div class="relative h-32 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="Roasted salmon with asparagus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-e_MDXYPigYfoKBUbnll5YIzUhxcBIGMKu-rSLlWo8WjQOSu7ECsiFEggrnR-UQ4HpqqY6bA4Kjg8qnUutVJhLLQ-Q9-SEIpWf_opPd7Q7aOTGxahh7nP422kqbqJUBCRfpnT0tPOpRfXH8_B7hd9DePBWiOYaDevvuRu-v5-CpDiLBYx_DML4ADRCMhu6GrNQgvJJM5eke4-4E7BZ1E27SyPzieBxQSdPxTX3mzHj38EJDs5VTCLdpSmvzJzPnNa0VHHdBva8YaN"/>
+<div class="absolute top-2 right-2 px-2 py-1 bg-background-dark/80 backdrop-blur rounded text-[10px] font-bold text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">calendar_month</span> Oct 20
+                                </div>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm leading-tight">Roasted Salmon &amp; Asparagus</h3>
+<div class="px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded text-[10px] font-bold border border-amber-500/20">
+                                        2 Days Left
+                                    </div>
+</div>
+<div class="flex items-end justify-between mt-4">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Portions</p>
+<p class="text-xl font-black text-primary">02</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Meal Card 3 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-primary/50 transition-all shadow-sm hover:shadow-md">
+<div class="relative h-32 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="Vegetarian quinoa bowl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA3CcV40twhoMssbitfUcNpYlU1gw1w2CDN_DA95rLmama6yXxIl5fqzUSBxK5Nj9jd3EzfMvSLqdqswW2IAx3__BTW5H71bKH_i4blVbqYoeZb2Mq4MKl9l739OutbPEJOGDBcpvlXJDYsmuuUFIwzNexCORcIOihndMD9SKRyBkdwZkUg7AB_Oq6TCamvRHlsJ1Jd6NyApQKItEEh2AWe0ISHQ1QcpG2bjUxfb46n-qZdGNLHnbxlTWm-Ws3SimpMs-8Cmzcw1eL"/>
+<div class="absolute top-2 right-2 px-2 py-1 bg-background-dark/80 backdrop-blur rounded text-[10px] font-bold text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">calendar_month</span> Oct 05
+                                </div>
+<div class="absolute bottom-2 left-2 flex gap-1">
+<span class="px-2 py-0.5 bg-primary rounded text-[10px] font-bold text-white">Veggie</span>
+</div>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm leading-tight">Mediterranean Quinoa Bowl</h3>
+<div class="px-2 py-0.5 bg-red-500 text-white rounded text-[10px] font-bold">
+                                        EXPIRED
+                                    </div>
+</div>
+<div class="flex items-end justify-between mt-4">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Portions</p>
+<p class="text-xl font-black text-primary">01</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Meal Card 4 -->
+<div class="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-primary/50 transition-all shadow-sm hover:shadow-md">
+<div class="relative h-32 overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="Beef and broccoli meal prep" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCfuHJUxLqfs9cIPWy-joisB8RHyFR3GJw5SsnLNmsGVwJ2xcmFhXI4c1PILZIdYaPHkIjKDmKjHeYdKa6o7loyWR0wq1EMhkkFnnUEjzBGNUtswvZTUliy4UBdSwL_pUk6k6WRJK785YyJfc9OOR5G8VsAwlXTma8RzD6LjejER3ebH07_NJ4Fr41OQiljkWyScLTMsA8m4iyRbvjD_MxZyvpiWLWZhsCKXKGtV7bPAHDeCNk6c-HwgHPfwg2s-c3oqT3E2QGNbe6"/>
+<div class="absolute top-2 right-2 px-2 py-1 bg-background-dark/80 backdrop-blur rounded text-[10px] font-bold text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">calendar_month</span> Oct 25
+                                </div>
+</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm leading-tight">Teriyaki Beef &amp; Broccoli</h3>
+<div class="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[10px] font-bold border border-green-500/20">
+                                        22 Days Left
+                                    </div>
+</div>
+<div class="flex items-end justify-between mt-4">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Portions</p>
+<p class="text-xl font-black text-primary">06</p>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Activity Chart Section (Mini) -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<h3 class="font-bold mb-4">Stock Trends</h3>
+<div class="h-40 flex items-end justify-between gap-2 px-2">
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[40%] hover:bg-primary transition-colors">
+<span class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold opacity-0 group-hover:opacity-100">42</span>
+</div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[65%] hover:bg-primary transition-colors"></div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[55%] hover:bg-primary transition-colors"></div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[80%] hover:bg-primary transition-colors"></div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[45%] hover:bg-primary transition-colors"></div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[90%] hover:bg-primary transition-colors"></div>
+<div class="w-full bg-primary/20 rounded-t-sm relative group h-[70%] hover:bg-primary transition-colors"></div>
+</div>
+<div class="flex justify-between mt-2 text-[10px] text-slate-500 font-bold px-2 uppercase tracking-tighter">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<h3 class="font-bold mb-4">Quick Insights</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-accent-teal/10 flex items-center justify-center text-accent-teal">
+<span class="material-symbols-outlined text-sm">eco</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">Waste Reduced</p>
+<p class="text-[10px] text-slate-500">You saved 3.2kg of potential food waste this month.</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">savings</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">Estimated Savings</p>
+<p class="text-[10px] text-slate-500">Meal prepping saved you approximately $140 this week.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

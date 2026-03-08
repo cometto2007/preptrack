@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mealie Freezer - Add Item</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-size: 24px; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 bg-slate-100 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 hidden lg:flex flex-col">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-10">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">kitchen</span>
+</div>
+<div>
+<h1 class="font-bold text-lg leading-none">Mealie</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Inventory Manager</p>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="text-sm font-medium">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-sm font-medium">Add Item</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-6">
+<div class="flex items-center gap-3 p-3 bg-slate-200/50 dark:bg-slate-800 rounded-xl">
+<div class="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700 overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="User profile avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX75tTI-SFJ43jvR1bys3AnBhMTgHLZupQD9wOtShtJ89vTN0PXkoKZ7WuYOOs8evA5UZlODAQ4ELl1rszdw0_vV3n2l1364NYJV2UC87oLnEo_RjWdsyZ1aVeSYHVfxl8eRwBgpGok0wqZcmQ2gTRHdMlNhq8ZPXwxg4SdIiRtRtRTzY48hDZyMHOjV3tRbA6nwC-ub1I-Hyy9HLTMjmlbewkaipO8XVum6hGPaeAu8N5FENlTXuLpMi31NzNP961L3QiOkCOjtRZ"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-semibold truncate">Alex Chef</p>
+<p class="text-xs text-slate-500 truncate">Premium Member</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 text-sm cursor-pointer">logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-background-light dark:bg-background-dark">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+<h2 class="text-xl font-bold">Add to Freezer</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search recipe..." type="text"/>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<!-- Form Content -->
+<div class="flex-1 overflow-y-auto p-8 flex justify-center">
+<div class="w-full max-w-2xl">
+<div class="mb-8">
+<h3 class="text-2xl font-bold tracking-tight">Freezer Log Entry</h3>
+<p class="text-slate-500 dark:text-slate-400">Add detailed information for accurate tracking and expiry notifications.</p>
+</div>
+<form class="space-y-8 pb-12">
+<!-- Meal Name Autocomplete -->
+<div class="space-y-3">
+<label class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Meal Details</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-4 text-slate-400 group-focus-within:text-primary">restaurant</span>
+<input class="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-lg focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm" placeholder="Start typing a meal name..." type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Portion Counter -->
+<div class="bg-white dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+<div class="flex items-center justify-between mb-2">
+<label class="text-sm font-medium">Portions</label>
+<span class="text-xs text-primary font-bold">SINGLE SERVE</span>
+</div>
+<div class="flex items-center justify-between gap-4">
+<button class="w-12 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary/20 hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<span class="text-3xl font-bold w-12 text-center">4</span>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary/20 hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+<!-- Link to Mealie Toggle -->
+<div class="bg-white dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+<div class="flex flex-col">
+<label class="text-sm font-medium">Link Mealie Recipe</label>
+<p class="text-xs text-slate-500">Auto-import ingredients</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Categories Chips -->
+<div class="space-y-3">
+<label class="text-sm font-medium">Category</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-medium" type="button">Dinner</button>
+<button class="px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" type="button">Lunch</button>
+<button class="px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" type="button">Soup</button>
+<button class="px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" type="button">Vegetarian</button>
+<button class="px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" type="button">Meal Prep</button>
+<button class="px-8 py-1.5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-sm font-medium flex items-center gap-1 hover:border-primary hover:text-primary transition-all" type="button">
+<span class="material-symbols-outlined text-sm">add</span> Add
+                                </button>
+</div>
+</div>
+<!-- Date Selection Pills -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-3">
+<label class="text-sm font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
+                                    Date Frozen
+                                </label>
+<div class="flex items-center gap-2">
+<button class="flex-1 bg-primary/10 border border-primary text-primary px-4 py-3 rounded-lg text-sm font-semibold" type="button">Today</button>
+<button class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400" type="button">Pick Date</button>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-sm font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-slate-400">event_busy</span>
+                                    Best Before
+                                </label>
+<div class="flex items-center gap-2">
+<button class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400" type="button">3 Months</button>
+<button class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400" type="button">6 Months</button>
+<button class="w-12 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-slate-400" type="button">
+<span class="material-symbols-outlined text-sm">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Notes Area -->
+<div class="space-y-3">
+<label class="text-sm font-medium">Notes &amp; Labels</label>
+<textarea class="w-full p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-primary/50 focus:border-primary resize-none" placeholder="Mention defrosting instructions, spice level, or extra ingredients needed..." rows="4"></textarea>
+</div>
+<!-- Form Actions -->
+<div class="pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center gap-4">
+<button class="flex-1 px-6 py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined">archive</span>
+                                Add to Freezer
+                            </button>
+<button class="px-8 py-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold transition-all hover:bg-slate-200 dark:hover:bg-slate-700" type="button">
+                                Cancel
+                            </button>
+</div>
+</form>
+</div>
+</div>
+</main>
+</div>
+</body></html>

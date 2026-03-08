@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PrepTrack Notifications</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased text-slate-900 dark:text-slate-100">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto overflow-x-hidden border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+<!-- Header -->
+<header class="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="size-9 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">kitchen</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">PrepTrack</h1>
+</div>
+<div class="flex gap-2">
+<button class="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-background-light dark:border-background-dark"></span>
+</button>
+</div>
+</header>
+<main class="flex-1 px-4 py-4 space-y-6 pb-32">
+<!-- Section Title -->
+<div class="flex items-center justify-between">
+<h3 class="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight">Daily Planning</h3>
+<span class="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-full uppercase tracking-wider">2 Tasks</span>
+</div>
+<!-- Card 1: Tomorrow's Lunch -->
+<div class="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+<div class="p-5">
+<div class="flex items-start justify-between mb-4">
+<div class="flex flex-col gap-0.5">
+<span class="text-primary text-xs font-bold uppercase tracking-widest">Tomorrow's Lunch</span>
+<h4 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight">Beef Stew</h4>
+<div class="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-sm">ac_unit</span>
+<p class="text-xs font-medium">4 portions in freezer</p>
+</div>
+</div>
+<div class="w-16 h-16 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+<div class="w-full h-full bg-cover bg-center" data-alt="Close up of a hearty beef stew in a bowl" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBODY21NjkBUzAPX7ORr5j0xxSHS16LN6w1FZyMqj-ueQJM-ahfv82YlS132YbkxglHXCBUNnWvoalZf3ZXf3DwU3wXlwJzl9PT0Kd1GD9GKilOfWUL964124pX8JfqcoM-CWfg4jiAFmzHRPvteMpLenD5WOoYlpML9qsOHJWZNoIdfHkMvv0160da9X2HOqHOY8fW3om8sAzDzy8q4urk_yTuTmrQubTtyrd5WKdZIFuC1odujEMmMYNjnUboL7yM0NBkklAGHG5Z')"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<button class="flex w-full cursor-pointer items-center justify-center rounded-lg h-12 bg-teal-600 hover:bg-teal-500 text-white gap-2 text-base font-bold transition-all shadow-lg shadow-teal-900/20 active:scale-[0.98]">
+<span class="material-symbols-outlined">kitchen</span>
+<span>Defrost 1</span>
+</button>
+<div class="flex gap-2">
+<button class="flex-1 flex cursor-pointer items-center justify-center rounded-lg h-10 border border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span>Cooking Fresh</span>
+</button>
+<button class="flex-1 flex cursor-pointer items-center justify-center rounded-lg h-10 bg-transparent text-slate-500 dark:text-slate-500 text-sm font-medium hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+<span>Skip Meal</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2: Tonight's Dinner -->
+<div class="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="p-5">
+<div class="flex items-start justify-between mb-4">
+<div class="flex flex-col gap-0.5">
+<span class="text-amber-500 text-xs font-bold uppercase tracking-widest">Tonight's Dinner</span>
+<h4 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight">Lentil Soup</h4>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Status check: What happened?</p>
+</div>
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-400">restaurant</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 py-3 px-2 border border-transparent hover:border-primary/50 transition-all active:bg-primary/10">
+<span class="material-symbols-outlined text-blue-500 text-lg">check_circle</span>
+<span class="text-xs font-bold text-slate-700 dark:text-slate-300">Ate Fresh</span>
+</button>
+<button class="flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 py-3 px-2 border border-transparent hover:border-primary/50 transition-all active:bg-primary/10">
+<span class="material-symbols-outlined text-teal-500 text-lg">ac_unit</span>
+<span class="text-xs font-bold text-slate-700 dark:text-slate-300">Froze Portions</span>
+</button>
+<button class="flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 py-3 px-2 border border-transparent hover:border-primary/50 transition-all active:bg-primary/10">
+<span class="material-symbols-outlined text-indigo-500 text-lg">layers</span>
+<span class="text-[10px] leading-tight font-bold text-slate-700 dark:text-slate-300 text-center">Ate + Froze Rest</span>
+</button>
+<button class="flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 py-3 px-2 border border-transparent hover:border-primary/50 transition-all active:bg-primary/10">
+<span class="material-symbols-outlined text-orange-500 text-lg">inventory_2</span>
+<span class="text-[10px] leading-tight font-bold text-slate-700 dark:text-slate-300 text-center">Used from Freezer</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-8 pb-6 pt-3 flex justify-between items-center z-40">
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">calendar_today</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Plan</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">book</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Recipes</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Settings</span>
+</a>
+</nav>
+</div>
+</body></html>

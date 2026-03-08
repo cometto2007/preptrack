@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-4"><!-- Bottom Sheet Backdrop -->
+<div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-0"></div>
+<!-- PrepTrack Bottom Sheet -->
+<div class="relative z-10 w-full max-w-md flex flex-col justify-end min-h-[60vh]">
+<div class="bg-background-light dark:bg-background-dark rounded-t-xl shadow-2xl overflow-hidden flex flex-col border-t border-slate-200/10">
+<!-- BottomSheetHandle -->
+<div class="flex flex-col items-center pt-3 pb-2">
+<div class="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+</div>
+<!-- Content Header -->
+<div class="px-6 pt-4 pb-2 text-center">
+<h2 class="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider mb-1">Add Portions</h2>
+<h1 class="text-slate-900 dark:text-slate-100 text-2xl font-bold font-display">Lentil Soup</h1>
+</div>
+<!-- Portion Selector Section -->
+<div class="flex flex-col items-center justify-center py-10 px-6">
+<div class="flex items-center justify-between w-full max-w-xs">
+<!-- Minus Button -->
+<button class="w-16 h-16 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95">
+<span class="material-symbols-outlined text-3xl">remove</span>
+</button>
+<!-- Large Central Count -->
+<div class="flex flex-col items-center">
+<span class="text-7xl font-bold text-slate-900 dark:text-slate-100 font-display">4</span>
+<span class="text-slate-500 dark:text-slate-400 text-sm font-medium">portions</span>
+</div>
+<!-- Plus Button -->
+<button class="w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 active:scale-95">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</div>
+<!-- Date Metadata -->
+<div class="px-6 py-4 flex flex-col gap-1 items-center bg-slate-100/50 dark:bg-slate-800/30">
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Freeze date: <strong class="text-slate-900 dark:text-slate-200">Today</strong></span>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-500 text-xs">
+<span class="material-symbols-outlined text-xs text-amber-500">event_upcoming</span>
+<span>Expires: <strong class="dark:text-slate-400">July 15, 2024</strong> (3 months)</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="p-6 pt-4 flex flex-col gap-3">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2">
+                    Confirm Freezing
+                </button>
+<button class="w-full py-2 text-slate-500 dark:text-slate-400 font-medium text-sm hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+                    Cancel
+                </button>
+</div>
+<!-- Safe Area Spacer -->
+<div class="h-6 bg-background-light dark:bg-background-dark"></div>
+</div>
+</div></body></html>

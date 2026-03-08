@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - Meal Planner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            --checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(255,255,255)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-72 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark">
+<div class="flex flex-col h-full p-6">
+<div class="mb-8 px-2">
+<h1 class="text-xl font-bold tracking-tight text-primary flex items-center gap-2">
+<span class="material-symbols-outlined">restaurant_menu</span>
+                        MealPlanner Pro
+                    </h1>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+                        Inventory
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+                        Add Item
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+</nav>
+<div class="mt-auto pt-6 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Alex Rivers</p>
+<p class="text-xs text-slate-500">Premium Plan</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark">
+<div class="max-w-5xl mx-auto py-12 px-8">
+<!-- Header -->
+<header class="mb-10">
+<h2 class="text-4xl font-black tracking-tight mb-2">Settings</h2>
+<p class="text-slate-500 dark:text-slate-400">Configure your meal planning and storage preferences.</p>
+</header>
+<div class="space-y-12">
+<!-- Notification Preferences -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+<h3 class="text-xl font-bold">Notification Preferences</h3>
+</div>
+<div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="divide-y divide-slate-200 dark:divide-slate-800">
+<label class="flex items-center justify-between p-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<div class="flex flex-col">
+<span class="font-medium">Email notifications</span>
+<span class="text-sm text-slate-500">Receive daily alerts for expiring items in your freezer</span>
+</div>
+<input checked="" class="h-5 w-5 rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<div class="flex flex-col">
+<span class="font-medium">Push notifications</span>
+<span class="text-sm text-slate-500">Real-time mobile reminders for planned meals</span>
+</div>
+<input class="h-5 w-5 rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<div class="flex flex-col">
+<span class="font-medium">Weekly summary</span>
+<span class="text-sm text-slate-500">Every Sunday morning, get a report of your eating habits</span>
+</div>
+<input checked="" class="h-5 w-5 rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary" type="checkbox"/>
+</label>
+</div>
+</div>
+</section>
+<!-- Weekly Schedule Grid -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">calendar_view_week</span>
+<h3 class="text-xl font-bold">Weekly Schedule</h3>
+</div>
+<div class="grid grid-cols-7 gap-4">
+<!-- Day Column Loop Mockup -->
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Mon</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Tue</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase text-primary">Wed</span>
+<div class="bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/30 flex flex-col gap-4 ring-2 ring-primary/20">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-primary uppercase font-bold tracking-widest">Lunch</span>
+<input checked="" class="h-10 w-10 rounded-lg border-primary/30 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-primary/20 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-primary uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-primary/30 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Thu</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Fri</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Sat</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-center text-xs font-bold text-slate-500 uppercase">Sun</span>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Lunch</span>
+<input class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex flex-col items-center gap-2">
+<span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Dinner</span>
+<input checked="" class="h-10 w-10 rounded-lg border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary checked:bg-primary transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Freezer Defaults -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">ac_unit</span>
+<h3 class="text-xl font-bold">Freezer Defaults</h3>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-red-500">flatware</span>
+<span class="font-medium">Cooked Meals</span>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary text-center" type="number" value="3"/>
+<span class="text-sm text-slate-500">months</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-500">restaurant</span>
+<span class="font-medium">Raw Meat</span>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary text-center" type="number" value="6"/>
+<span class="text-sm text-slate-500">months</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-green-500">eco</span>
+<span class="font-medium">Vegetables</span>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary text-center" type="number" value="12"/>
+<span class="text-sm text-slate-500">months</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-yellow-500">bakery_dining</span>
+<span class="font-medium">Bread / Dough</span>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-primary text-center" type="number" value="2"/>
+<span class="text-sm text-slate-500">months</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Mealie Integration -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">sync_alt</span>
+<h3 class="text-xl font-bold">Mealie Integration</h3>
+</div>
+<div class="bg-slate-50 dark:bg-slate-900/50 p-8 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-start justify-between gap-8">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-12 h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">link</span>
+</div>
+<div>
+<p class="font-bold text-lg">Connected to Mealie</p>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+<span class="text-xs text-green-500 font-bold uppercase tracking-wider">Operational</span>
+</div>
+</div>
+</div>
+<div class="space-y-4 max-w-md">
+<div>
+<label class="block text-sm font-medium text-slate-500 mb-1">Instance URL</label>
+<input class="w-full h-11 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500" readonly="" type="text" value="https://mealie.homelab.local"/>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex-1">
+<label class="block text-sm font-medium text-slate-500 mb-1">Last Sync</label>
+<p class="text-sm font-medium">Today, 08:42 AM</p>
+</div>
+<div class="flex-1">
+<label class="block text-sm font-medium text-slate-500 mb-1">Recipes Synced</label>
+<p class="text-sm font-medium">142 Recipes</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="bg-primary text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-all">
+<span class="material-symbols-outlined">sync</span>
+                                        Sync Now
+                                    </button>
+<button class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined">settings_input_component</span>
+                                        Configure API
+                                    </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Actions -->
+<div class="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-4">
+<button class="px-6 py-2 rounded-lg font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Discard changes</button>
+<button class="px-8 py-2 bg-primary text-white rounded-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Save All Changes</button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

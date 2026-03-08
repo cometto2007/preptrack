@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meal Planner - Plan View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark hidden lg:flex flex-col">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8"><div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div>
+<h1 class="font-bold text-lg tracking-tight">PrepTrack</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Inventory Manager</p>
+</div></div>
+<nav class="space-y-1"><a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium" href="#">
+<span class="material-symbols-outlined filled-icon">calendar_month</span>
+<span class="text-sm font-medium">Plan</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="text-sm font-medium">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">add_box</span>
+<span class="text-sm font-medium">Add Item</span>
+</a>
+<div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div></nav>
+</div>
+<div class="mt-auto p-6">
+<div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+<p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Storage Status</p>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-3/4"></div>
+</div>
+<p class="text-[10px] mt-2 text-slate-400">75% Freezer Capacity</p>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Header -->
+<header class="h-16 flex items-center justify-between px-8 bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary lg:hidden">menu</span>
+<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Plan</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+</button>
+<div class="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDcRgrPOSZajlAqMcZ5cTVBg2YH8ffLGEem3MuLSHpF9xr-SuX1e9-iG-EnmGg27AvVROyzlJbAgyJ17pRghK2JYCpSgSjPxyZV1pKWKwtnwjs047jsgU2q3RLqrkBJJykxiSRxG3em0PeCKfPqJYD8iS_n4Uoy8POYshwTz30PlZr89jd1q83aCaPAL8gmM6RCeetZU5EegFz6Kqts_2YNnQ87QNwzvQjLE435-cQ1Mfqx5516wHv4n5D11tGGuHIp2vjnXJWoo0e"/>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-8">
+<div class="max-w-6xl mx-auto space-y-8">
+<!-- Summary Widget -->
+<section class="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<!-- Toggle -->
+<div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+<button class="px-4 py-1.5 text-sm font-medium bg-white dark:bg-slate-700 text-primary shadow-sm rounded-md transition-all">7 Days</button>
+<button class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all">14 Days</button>
+<button class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all">30 Days</button>
+</div>
+<!-- Stats Row -->
+<div class="flex flex-1 gap-8 md:justify-end">
+<div class="flex flex-col">
+<span class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Total Meals</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold">21</span>
+<span class="text-xs font-medium text-emerald-500">+5%</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Coverage</span>
+<span class="text-2xl font-bold">85%</span>
+</div>
+<div class="flex flex-col flex-1 max-w-[240px]">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs text-slate-500 dark:text-slate-400 font-semibold">Weekly Progress</span>
+<span class="text-xs font-bold text-primary">18/21</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Weekly Grid -->
+<section class="space-y-4">
+<div class="grid grid-cols-12 gap-4 px-4 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+<div class="col-span-2">Day</div>
+<div class="col-span-5">Lunch</div>
+<div class="col-span-5">Dinner</div>
+</div>
+<!-- Days List -->
+<div class="space-y-3">
+<!-- Monday -->
+<div class="grid grid-cols-12 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 items-center shadow-sm">
+<div class="col-span-2">
+<p class="font-bold text-slate-900 dark:text-slate-100">Monday</p>
+<p class="text-xs text-slate-500">Oct 23</p>
+</div>
+<!-- Lunch -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Healthy colorful salad bowl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8WohTSp2wlQXXMWGAqTZBSY8xR6GW73lPwmfoCIpkmGupvzVeLoJfjBs8zm9kY72xp9ZOc7vdXx6MTdteJT-zaYy3RKq5_tFIDFG7x9-uWJ3CEZXR4emgnH537EhIAjcwmQkAWyhhIX1gzxz10Zi38Z41ZtiJZNJ0RK7JGfXCto2Eo_goCg8lkodIFD27NDtvXD24rsmdZmtQMUW55XAf6vyPxkHovw-CvlhFwl3HUUInc9gHLyz94dHdyWaJwgRBTRewq3VRUpmi"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Quinoa Buddha Bowl</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">Freezer</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+<!-- Dinner -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Grilled salmon with vegetables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoHjchw_1h7qSKTrw25IjXhPFSsluH2h8LSCmfiS_Zwg66Z6-CFRGxZqzYq8gN5oom3R4oEgKfpejEKYcakQWhuvwZvx1sWaVwWvGevG_l8HSj-Hpz8LH9sTDggZwhm_uwcmmLThXMU98ZKF0nkcqXf3d1owcO8MARvqyh2sZw_TtHaLfIpC7MRbyTX1FsJOyNR9bOE8fWHNwXZGB49TQKDWXFkng7HW_v_bvI6QausfajuTH3O7N95RXx7t8raD_MIL1cby53y8cD"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Grilled Salmon &amp; Asparagus</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Fresh</span>
+</div>
+</div>
+<button class="text-primary hover:text-primary/80 transition-colors bg-primary/10 p-1 rounded">
+<span class="material-symbols-outlined text-[20px] filled-icon">shopping_cart_checkout</span>
+</button>
+</div>
+</div>
+<!-- Tuesday -->
+<div class="grid grid-cols-12 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 items-center shadow-sm">
+<div class="col-span-2">
+<p class="font-bold text-slate-900 dark:text-slate-100">Tuesday</p>
+<p class="text-xs text-slate-500">Oct 24</p>
+</div>
+<!-- Lunch -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Greek salad with feta" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA86d6l16XxdoUnY5a75-_wi7yR57nonovzRFX9zQPlqhzs0ulQ6Bw_KChUiKUsXs88FuBQxr78ZYagkdtd-DEvbpKL9VegWa5vZJd_PnrpfF9kPtyIYSYUCBa-JvYyZu3jpz5XZr_6-h8fOu2AmWhQ1dgWF1x7XY77nwj-Yv0QEk4gUpeO5Nxlhe1HFQjkjHinD4KZ-5-qCZDNQUSzi33JAjcf0z0vbWYSC0BtUl8A6yvaQqmCcHZ1imLwG0KwdXzynSODZGULa0X3"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Greek Salad with Chicken</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Fresh</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+<!-- Dinner -->
+<div class="col-span-5 flex items-center justify-between gap-3 border-2 border-dashed border-slate-200 dark:border-slate-800 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">add</span>
+</div>
+<p class="text-sm font-medium text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200">Plan a dinner...</p>
+</div>
+<span class="text-[10px] text-red-400 font-bold uppercase">Missing</span>
+</div>
+</div>
+<!-- Wednesday -->
+<div class="grid grid-cols-12 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 items-center shadow-sm">
+<div class="col-span-2">
+<p class="font-bold text-slate-900 dark:text-slate-100">Wednesday</p>
+<p class="text-xs text-slate-500">Oct 25</p>
+</div>
+<!-- Lunch -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Pasta with pesto sauce" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg6jiAArSPzIPrFhPoGFkszui9QC53EmyRZ6HoG9fMD_sVXaGl80kEnpST-CUD0ZMmKE2aqzQViSZUjVFP9zZo2TRhAj8X-k5KemTtC9nF1jEUb1JL_XOnXISqN-ECCGRhyVJuh2pehU0Tj_OpZW4tC4_NCJlic9-Y4FybcfQcWVBd1ZqCjblYva-E5ipmAorU_hBw35OhY9vDjVN3aJ2luGwjGQOsv-CYpKX6tGOeugyPf9Qv_RpUpf5GMaFDxvsX_OX273NZng3E"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Pesto Pasta with Pine Nuts</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">Freezer</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+<!-- Dinner -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Homemade thin crust pizza" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbdAeiIYpdtb9AVpZns8N2qWsJvwd3x_JPz1vGP3p5fn1TG9DOBfaGprV9MFSCPMgLwdobUBoU3SnxBxCf_mqO3WWYhTkh2gBWLE4RokHgUS9KQOYo0a9_sY7EOrprif7EWztsoD9DGnDo3jcUwbkITWDDz-PlXCcwobnM7zOznOPn1TT8zub4SYukbCrttJR5cKSY5AV1zlHemvU21-LEGZ866vYcnjtRKKemguTX6UfhV2wt7s0yjFwgQsKlurxtPiK12JL32E7J"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Veggie Thin Crust Pizza</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Fresh</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<!-- Thursday -->
+<div class="grid grid-cols-12 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 items-center shadow-sm opacity-90">
+<div class="col-span-2">
+<p class="font-bold text-slate-900 dark:text-slate-100">Thursday</p>
+<p class="text-xs text-slate-500">Oct 26</p>
+</div>
+<!-- Lunch -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Warm pumpkin soup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQt_7uKE02X5wkPS6kV7sVcnWXYHO_uysrgTx1xAB32B3cyQaNWJUOXTnRlmzvCp-i4Dcx3tZLOYqEbtUa1GJUOL1LaR9P4PnPi3njr_xMv3H1QKcQj3VPKoLCTRjSsjMBdRM2PQ8YAI9PuMm6yF3LhrC6hhbhudoYZWYo1ery3aW2ysYtE56nTE0GKqx6iRaXLZ9F_GF8GnIqoi6HOk6nxcPBvm_N6q4cZqWjxXSIVk8rm0M8odkReKDWVnE7jruwGhZRbg2f-Y2M"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Roasted Pumpkin Soup</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">Freezer</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+<!-- Dinner -->
+<div class="col-span-5 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-transparent hover:border-primary/30 transition-all">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="size-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Beef stir fry with peppers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmrdflpPlZ4OIv775WT43bGl3ATpVZehD7ix_biLsXkbyMxxNIGZSrDvjScwf_5Orxq1g9WckkCUkv6HbLvXDrBGeiLmIFYGeQ_zaPNfS4feQXdI8_UT-ek83cksYOwAbYjvWLy2KPgcsxs-PF5fj9fUC6oXn9uWqdoAf1dPbQwCJX1EEcqJvhEhszQfy8WyWtQkvurXBPJQEz0rtHOzKJLK5H-POxtAvLepG9-6Cz4EbnKdohanVrZ47zBJxzlSgz8vPMqhRSDj-f"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-semibold truncate">Beef &amp; Broccoli Stir-fry</p>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Fresh</span>
+</div>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_shopping_cart</span>
+</button>
+</div>
+</div>
+<!-- More days would follow similar pattern -->
+<div class="flex justify-center pt-4">
+<button class="text-sm font-medium text-primary hover:underline flex items-center gap-2">
+                                    See full 7-day schedule
+                                    <span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Right Quick Access (Optional Desktop UI touch) -->
+</div>
+</body></html>
