@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
-  Package,
+  BookOpen,
   PlusCircle,
   Settings,
 } from 'lucide-react';
@@ -10,7 +10,7 @@ import {
 const navItems = [
   { to: '/',         label: 'Dashboard', Icon: LayoutDashboard },
   { to: '/plan',     label: 'Meal Plan', Icon: Calendar },
-  { to: '/recipes',  label: 'Inventory', Icon: Package },
+  { to: '/recipes',  label: 'Recipes',   Icon: BookOpen },
   { to: '/add',      label: 'Add Item',  Icon: PlusCircle },
   { to: '/settings', label: 'Settings',  Icon: Settings },
 ];
@@ -21,7 +21,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white flex-shrink-0">
-          <Package size={20} strokeWidth={2} />
+          <LayoutDashboard size={20} strokeWidth={2} />
         </div>
         <div>
           <h1 className="font-bold text-lg tracking-tight leading-none">PrepTrack</h1>

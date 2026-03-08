@@ -122,7 +122,7 @@ router.post('/:id/increment', async (req, res) => {
       const { rows: settingRows } = await client.query('SELECT value FROM settings WHERE key = $1', [settingKey]);
       const days = settingRows.length ? parseInt(settingRows[0].value) : 90;
       const fd = freeze_date ? new Date(freeze_date) : new Date();
-      fd.setDate(fd.getDate() + days);
+      fd.setUTCDate(fd.getUTCDate() + days);
       finalExpiry = fd.toISOString().split('T')[0];
     }
 
