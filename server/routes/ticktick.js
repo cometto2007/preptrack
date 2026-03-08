@@ -2,16 +2,17 @@ const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
-const { createTask } = require('../services/ticktick');
+const { createTask, getTask, updateTask } = require('../services/ticktick');
 const mealieSync = require('../services/mealieSync');
 
 const TICKTICK_AUTH_URL  = 'https://ticktick.com/oauth/authorize';
 const TICKTICK_TOKEN_URL = 'https://ticktick.com/oauth/token';
+const SHOPPING_LIST_TITLE = 'PrepTrack — Shopping List';
 
 // Single-use state + redirect URI stored together to prevent CSRF on the OAuth callback
 let pendingOAuth = null; // { state, redirectUri }
 
-// GET /api/ticktick/auth?origin=<browser-origin> — start OAuth flow
+// GET /api/ticktick/auth — start OAuth flow
 router.get('/auth', async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -22,11 +23,6 @@ router.get('/auth', async (req, res) => {
       return res.status(400).send('ticktick_client_id not configured in Settings');
     }
 
-    // Build the redirect URI from the browser-facing host.
-    // Vite's proxy (changeOrigin:true) sets X-Forwarded-Host to the original
-    // browser host (e.g. localhost:5173), which is what must be registered in
-    // the TickTick developer portal. In production a real reverse proxy does
-    // the same. Fall back to the actual Host header if no forwarding header exists.
     const forwardedHost  = req.get('x-forwarded-host');
     const forwardedProto = req.get('x-forwarded-proto');
     const host  = forwardedHost  || req.get('host');
@@ -119,6 +115,13 @@ router.get('/callback', async (req, res) => {
       [accessToken]
     );
 
+    // Reset shopping list state so the next addition creates a fresh task
+    await pool.query(
+      `DELETE FROM settings WHERE key IN (
+        'ticktick_shopping_task_id', 'ticktick_shopping_project_id', 'ticktick_shopping_item_map'
+      )`
+    );
+
     console.log('[ticktick] OAuth connected successfully');
     closePopup('connected');
   } catch (err) {
@@ -127,11 +130,61 @@ router.get('/callback', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Ingredient aggregation helpers
+// ---------------------------------------------------------------------------
+
 /**
- * POST /api/ticktick/shopping-list
- * Body: { slug, recipeName }
- * Fetches ingredients from Mealie and creates a TickTick task.
+ * Build a stable aggregation key for a Mealie ingredient.
+ * Same food + same unit → merge. Same food + different unit → separate item.
+ * Ingredients with no food.id (notes/display) are keyed by their display text.
  */
+function ingredientKey(ing) {
+  if (ing.food?.id) {
+    const unit = (ing.unit?.name || '').toLowerCase().trim();
+    return `food|${ing.food.id}|${unit}`;
+  }
+  const display = (ing.display || ing.note || '').toLowerCase().trim().slice(0, 60);
+  return `note|${display}`;
+}
+
+/**
+ * Build a human-readable checklist item title from a map entry.
+ * Format: "Zucchini — 4 whole (Recipe A, Recipe B)"
+ */
+function buildItemTitle(entry) {
+  let qty = '';
+  if (entry.qty != null && entry.qty > 0) {
+    // Show as integer if whole number, otherwise 2 decimal places max
+    qty = Number.isInteger(entry.qty)
+      ? String(entry.qty)
+      : parseFloat(entry.qty.toFixed(2)).toString();
+  }
+  const unit = entry.unit || '';
+  const name = entry.name || '';
+  const sources = entry.sources.join(', ');
+
+  let amount = [qty, unit].filter(Boolean).join(' ');
+  let left = [name, amount ? `— ${amount}` : ''].filter(Boolean).join(' ');
+  return `${left} (${sources})`;
+}
+
+/**
+ * Persist shopping list state (taskId, projectId, itemMap) to the settings table.
+ */
+async function saveShoppingState(taskId, projectId, itemMap) {
+  const upsert = `
+    INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, NOW())
+    ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`;
+  await pool.query(upsert, ['ticktick_shopping_task_id', taskId]);
+  await pool.query(upsert, ['ticktick_shopping_project_id', projectId]);
+  await pool.query(upsert, ['ticktick_shopping_item_map', JSON.stringify(itemMap)]);
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/ticktick/shopping-list
+// Body: { slug, recipeName }
+// ---------------------------------------------------------------------------
 router.post('/shopping-list', async (req, res) => {
   try {
     const { slug, recipeName } = req.body;
@@ -139,44 +192,156 @@ router.post('/shopping-list', async (req, res) => {
       return res.status(400).json({ error: 'slug or recipeName required' });
     }
 
-    // Load TickTick credentials from settings
+    // Load TickTick credentials + shopping list state from settings
     const { rows } = await pool.query(
-      "SELECT key, value FROM settings WHERE key IN ('ticktick_api_token', 'ticktick_list_id')"
+      `SELECT key, value FROM settings WHERE key IN (
+        'ticktick_api_token', 'ticktick_list_id',
+        'ticktick_shopping_task_id', 'ticktick_shopping_project_id', 'ticktick_shopping_item_map'
+      )`
     );
     const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
+
     if (!cfg.ticktick_api_token) {
       return res.status(503).json({ error: 'TickTick not configured — add API token in Settings' });
     }
 
-    // Fetch recipe from Mealie to get ingredients
-    let ingredients = [];
+    const token     = cfg.ticktick_api_token;
+    const listId    = cfg.ticktick_list_id || null;
+    let taskId      = cfg.ticktick_shopping_task_id || null;
+    let projectId   = cfg.ticktick_shopping_project_id || null;
+
+    // Parse the stored item map (key → { id, qty, unit, name, sources })
+    let itemMap = {};
+    try {
+      if (cfg.ticktick_shopping_item_map) {
+        itemMap = JSON.parse(cfg.ticktick_shopping_item_map);
+      }
+    } catch {
+      itemMap = {};
+    }
+
+    // Fetch recipe ingredients from Mealie
     let title = recipeName || slug;
+    let rawIngredients = [];
     if (slug) {
       try {
         const recipe = await mealieSync.getRecipe(slug);
         title = recipe.name || title;
-        // Support both snake_case (recipe_ingredient) and camelCase (recipeIngredient)
-        // across Mealie API versions
-        const rawIngredients = recipe.recipeIngredient || recipe.recipe_ingredient || [];
-        ingredients = rawIngredients.map(ing => {
-          const qty  = ing.quantity ? `${ing.quantity} ` : '';
-          const unit = (ing.unit?.name || ing.unit) ? `${ing.unit?.name || ing.unit} ` : '';
-          const food = ing.food?.name || ing.food || ing.note || ing.display || '';
-          return `${qty}${unit}${food}`.trim();
-        }).filter(Boolean);
+        rawIngredients = recipe.recipeIngredient || recipe.recipe_ingredient || [];
       } catch {
-        // Mealie unavailable — create task with just the recipe name
+        // Mealie unavailable — add a note-only item
+        rawIngredients = [];
       }
     }
 
-    await createTask(
-      cfg.ticktick_api_token,
-      cfg.ticktick_list_id || 'inbox',
-      title,
-      ingredients.length > 0 ? '' : 'No ingredient data available — check Mealie for details.',
-      ingredients,
-    );
-    res.json({ ok: true });
+    // Try to fetch the existing shopping list task
+    let existingItems = []; // TickTick items array from current task
+    if (taskId && projectId) {
+      try {
+        const existingTask = await getTask(token, projectId, taskId);
+        if (existingTask) {
+          existingItems = existingTask.items || [];
+        } else {
+          // Task was deleted or completed — start fresh
+          taskId = null;
+          projectId = null;
+          itemMap = {};
+        }
+      } catch {
+        // Can't reach TickTick — proceed with local state optimistically
+      }
+    }
+
+    // Build a status map from existing items so we preserve checked state
+    const statusById = {};
+    for (const item of existingItems) {
+      if (item.id != null) statusById[String(item.id)] = item.status ?? 0;
+    }
+
+    // Aggregate new ingredients into the item map
+    let added = 0;
+    let merged = 0;
+
+    for (const ing of rawIngredients) {
+      const key = ingredientKey(ing);
+      const foodName = ing.food?.name || ing.display || ing.note || '';
+      if (!foodName && !ing.display && !ing.note) continue; // skip empty
+
+      const qty  = typeof ing.quantity === 'number' ? ing.quantity : null;
+      const unit = ing.unit?.name || null;
+
+      if (itemMap[key]) {
+        // Existing ingredient — merge quantity and append recipe source
+        const entry = itemMap[key];
+        if (qty != null && entry.qty != null) {
+          entry.qty += qty;
+        }
+        if (!entry.sources.includes(title)) {
+          entry.sources.push(title);
+        }
+        merged++;
+      } else {
+        // New ingredient — add to map with a fresh random ID
+        itemMap[key] = {
+          id: crypto.randomBytes(4).toString('hex'),
+          qty,
+          unit,
+          name: foodName,
+          sources: [title],
+        };
+        added++;
+      }
+    }
+
+    // If no structured ingredients, add a plain note item
+    if (rawIngredients.length === 0) {
+      const key = `note|${title.toLowerCase().slice(0, 60)}`;
+      if (!itemMap[key]) {
+        itemMap[key] = {
+          id: crypto.randomBytes(4).toString('hex'),
+          qty: null,
+          unit: null,
+          name: title,
+          sources: [title],
+        };
+        added++;
+      }
+    }
+
+    // Rebuild the items array from the map (preserve checked state for existing IDs)
+    const items = Object.values(itemMap).map(entry => ({
+      id: entry.id,
+      title: buildItemTitle(entry),
+      status: statusById[entry.id] ?? 0,
+    }));
+
+    // Create or update the TickTick task
+    let savedTask;
+    if (taskId) {
+      savedTask = await updateTask(token, taskId, {
+        id: taskId,
+        projectId,
+        title: SHOPPING_LIST_TITLE,
+        items,
+      });
+    } else {
+      savedTask = await createTask(token, listId, SHOPPING_LIST_TITLE, '', []);
+      // createTask returns the task — now update it with structured items
+      // (some TickTick API versions ignore items on create, so we always update after)
+      taskId    = savedTask.id;
+      projectId = savedTask.projectId || listId;
+      savedTask = await updateTask(token, taskId, {
+        id: taskId,
+        projectId,
+        title: SHOPPING_LIST_TITLE,
+        items,
+      });
+    }
+
+    // Persist state for next call
+    await saveShoppingState(taskId, projectId, itemMap);
+
+    res.json({ ok: true, added, merged });
   } catch (err) {
     console.error('[ticktick] shopping-list error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to add to shopping list' });

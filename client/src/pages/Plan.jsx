@@ -51,14 +51,17 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
   const isOff = slot.status === 'off';
   const [adding, setAdding] = useState(false);
   const [listStatus, setListStatus] = useState(null); // null | 'ok' | 'error'
+  const [listCounts, setListCounts] = useState(null); // { added, merged }
 
   async function handleShoppingList() {
     setAdding(true);
     setListStatus(null);
+    setListCounts(null);
     try {
-      await ticktickApi.addToShoppingList(slot.slug, slot.recipeName);
+      const result = await ticktickApi.addToShoppingList(slot.slug, slot.recipeName);
+      setListCounts({ added: result.added ?? 0, merged: result.merged ?? 0 });
       setListStatus('ok');
-      setTimeout(() => setListStatus(null), 3000);
+      setTimeout(() => { setListStatus(null); setListCounts(null); }, 4000);
     } catch {
       setListStatus('error');
       setTimeout(() => setListStatus(null), 4000);
@@ -94,24 +97,34 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
       <div className="flex items-center gap-2 shrink-0">
         <StatusBadge status={slot.status} portions={slot.portions} />
         {needsAction && slot.slug && (
-          <button
-            onClick={handleShoppingList}
-            disabled={adding}
-            title={
-              listStatus === 'ok' ? 'Added to TickTick!'
-              : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
-              : 'Add ingredients to TickTick shopping list'
-            }
-            className={`flex items-center justify-center w-10 h-10 rounded transition-colors border ${
-              listStatus === 'ok'
-                ? 'bg-green-900/30 border-green-700 text-green-400'
-                : listStatus === 'error'
-                ? 'bg-red-900/30 border-red-700 text-red-400'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
-            } disabled:opacity-50`}
-          >
-            <ShoppingCart size={14} />
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleShoppingList}
+              disabled={adding || listStatus === 'ok'}
+              title={
+                listStatus === 'ok' ? 'Added to shopping list!'
+                : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
+                : 'Add ingredients to TickTick shopping list'
+              }
+              className={`flex items-center justify-center w-10 h-10 rounded transition-colors border ${
+                listStatus === 'ok'
+                  ? 'bg-green-900/30 border-green-700 text-green-400'
+                  : listStatus === 'error'
+                  ? 'bg-red-900/30 border-red-700 text-red-400'
+                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
+              } disabled:opacity-50`}
+            >
+              <ShoppingCart size={14} />
+            </button>
+            {listStatus === 'ok' && listCounts && (
+              <span className="text-[9px] font-semibold text-green-400 whitespace-nowrap">
+                +{listCounts.added}{listCounts.merged > 0 ? ` / ~${listCounts.merged}` : ''}
+              </span>
+            )}
+            {listStatus === 'error' && (
+              <span className="text-[9px] font-semibold text-red-400 whitespace-nowrap">Failed</span>
+            )}
+          </div>
         )}
         {needsAction && (
           <button

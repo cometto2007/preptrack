@@ -37,6 +37,9 @@ const ALLOWED_SETTINGS_KEYS = new Set([
   'ticktick_list_id',
   'ticktick_client_id',
   'ticktick_client_secret',
+  'ticktick_shopping_task_id',
+  'ticktick_shopping_project_id',
+  'ticktick_shopping_item_map',
 ]);
 
 // PUT /api/settings — update one or more settings (atomic)
