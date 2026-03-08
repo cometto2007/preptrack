@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, ChevronDown, ChevronUp, Snowflake } from 'lucide-react';
-import { mealsApi } from '../services/api';
+import { mealsApi, mealieApi } from '../services/api';
 import { useMeals } from '../hooks/useMeals';
 import { useSettings } from '../hooks/useSettings';
 import { localDateStr } from '../utils/dates';
@@ -18,9 +18,11 @@ export default function AddItem() {
   const rawSettings = useSettings();
   const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
 
-  const [name, setName] = useState(location.state?.name ?? '');
+  const [name, setName] = useState(location.state?.name ?? params.get('name') ?? '');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mealieRecipeSuggestions, setMealieRecipeSuggestions] = useState([]);
+  const [mealieSlug, setMealieSlug] = useState(location.state?.mealieSlug ?? null);
   const [portions, setPortions] = useState(2);
   const [category, setCategory] = useState('Meals');
   const [freezeDate, setFreezeDate] = useState(localDateStr());
@@ -31,6 +33,7 @@ export default function AddItem() {
   const [prefilling, setPrefilling] = useState(Boolean(editId));
   const [error, setError] = useState(null);
   const nameRef = useRef(null);
+  const mealieDebounceRef = useRef(null);
 
   // Pre-fill when editing
   useEffect(() => {
@@ -49,14 +52,37 @@ export default function AddItem() {
     setExpiryDate(calcExpiry(category, freezeDate, expiryDays));
   }, [category, freezeDate, expiryDays]);
 
-  // Autocomplete from existing meal names
+  // Local autocomplete from existing meal names + Mealie recipe suggestions
   useEffect(() => {
-    if (!name.trim()) { setSuggestions([]); return; }
+    if (!name.trim()) {
+      setSuggestions([]);
+      setMealieRecipeSuggestions([]);
+      return;
+    }
     const q = name.toLowerCase();
-    const matches = meals
+
+    // Local matches
+    const localMatches = meals
       .filter(m => m.name.toLowerCase().includes(q) && m.name.toLowerCase() !== q)
       .slice(0, 5);
-    setSuggestions(matches);
+    setSuggestions(localMatches);
+
+    // Mealie suggestions — debounced, only when >= 2 chars
+    if (name.trim().length >= 2) {
+      if (mealieDebounceRef.current) clearTimeout(mealieDebounceRef.current);
+      mealieDebounceRef.current = setTimeout(() => {
+        mealieApi.searchRecipes(name)
+          .then(({ recipes }) => {
+            // De-duplicate: skip if a local meal already has this slug
+            const localSlugs = new Set(meals.map(m => m.mealie_recipe_slug).filter(Boolean));
+            const filtered = (recipes || []).filter(r => !localSlugs.has(r.slug));
+            setMealieRecipeSuggestions(filtered.slice(0, 5));
+          })
+          .catch(() => setMealieRecipeSuggestions([]));
+      }, 300);
+    } else {
+      setMealieRecipeSuggestions([]);
+    }
   }, [name, meals]);
 
   function selectSuggestion(meal) {
@@ -64,8 +90,23 @@ export default function AddItem() {
     setCategory(meal.category);
     if (meal.notes) { setNotes(meal.notes); setShowNotes(true); }
     setSuggestions([]);
+    setMealieRecipeSuggestions([]);
     setShowSuggestions(false);
   }
+
+  function selectMealieRecipe(recipe) {
+    setName(recipe.name);
+    setSuggestions([]);
+    setMealieRecipeSuggestions([]);
+    setShowSuggestions(false);
+    setMealieSlug(recipe.slug);
+  }
+
+  // Merged suggestions for the dropdown
+  const allSuggestions = [
+    ...suggestions.map(m => ({ ...m, _type: 'local' })),
+    ...mealieRecipeSuggestions.map(r => ({ ...r, _type: 'mealie' })),
+  ];
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -81,7 +122,12 @@ export default function AddItem() {
         const existing = meals.find(m => m.name.toLowerCase() === trimmedName.toLowerCase());
         const mealId = existing
           ? existing.id
-          : (await mealsApi.create({ name: trimmedName, category, notes: notes || null })).meal.id;
+          : (await mealsApi.create({
+              name: trimmedName,
+              category,
+              notes: notes || null,
+              mealie_recipe_slug: mealieSlug || undefined,
+            })).meal.id;
 
         await mealsApi.increment(mealId, {
           portions,
@@ -136,19 +182,35 @@ export default function AddItem() {
                   required
                 />
               </div>
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && allSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-bg-surface border border-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
-                  {suggestions.map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onMouseDown={() => selectSuggestion(m)}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800 flex items-center justify-between"
-                    >
-                      <span className="font-medium">{m.name}</span>
-                      <span className="text-xs text-slate-400">{m.category}</span>
-                    </button>
-                  ))}
+                  {allSuggestions.map((item) => {
+                    if (item._type === 'local') {
+                      return (
+                        <button
+                          key={`local-${item.id}`}
+                          type="button"
+                          onMouseDown={() => selectSuggestion(item)}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800 flex items-center justify-between min-h-[48px]"
+                        >
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-xs text-slate-400">{item.category}</span>
+                        </button>
+                      );
+                    }
+                    // Mealie recipe suggestion
+                    return (
+                      <button
+                        key={`mealie-${item.id}`}
+                        type="button"
+                        onMouseDown={() => selectMealieRecipe(item)}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800 flex items-center justify-between min-h-[48px]"
+                      >
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-xs text-teal-400">Recipe</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

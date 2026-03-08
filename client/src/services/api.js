@@ -45,6 +45,15 @@ export const settingsApi = {
   updateSchedule: (day, d) => api.put(`/settings/schedule/${day}`, d),
 };
 
+// Mealie
+export const mealieApi = {
+  searchRecipes: (q = '', page = 1, perPage = 20) =>
+    api.get(`/mealie/recipes?q=${encodeURIComponent(q)}&page=${page}&perPage=${perPage}`),
+  getMealPlan: (start, days = 7) =>
+    api.get(`/mealie/meal-plan?start=${start}&days=${days}`),
+  sync: () => api.post('/mealie/sync', {}),
+};
+
 // Notifications
 export const notificationsApi = {
   getPending:  ()          => api.get('/notifications/pending'),
