@@ -5,17 +5,18 @@ async function seed() {
   console.log('Seeding development data...');
 
   const meals = [
-    { name: 'Beef Bolognese',   category: 'Meals',       notes: 'Extra rich, slow cooked 4 hours' },
-    { name: 'Chicken Soup',     category: 'Soups',       notes: null },
-    { name: 'Tomato Sauce',     category: 'Sauces',      notes: 'San Marzano tomatoes' },
-    { name: 'Banana Bread',     category: 'Baked Goods', notes: null },
-    { name: 'Chicken Stir Fry', category: 'Meals',       notes: null },
+    { name: 'Beef Bolognese',   mealieCategoryName: 'Meal Prep Recipies', mealieCategorySlug: 'meal-prep-recipies', notes: 'Extra rich, slow cooked 4 hours' },
+    { name: 'Chicken Soup',     mealieCategoryName: 'Meal Prep Recipies', mealieCategorySlug: 'meal-prep-recipies', notes: null },
+    { name: 'Tomato Sauce',     mealieCategoryName: null,                  mealieCategorySlug: null,                  notes: 'San Marzano tomatoes' },
+    { name: 'Banana Bread',     mealieCategoryName: null,                  mealieCategorySlug: null,                  notes: null },
+    { name: 'Chicken Stir Fry', mealieCategoryName: 'Sides',               mealieCategorySlug: 'sides',               notes: null },
   ];
 
   for (const meal of meals) {
     await pool.query(
-      `INSERT INTO meals (name, category, notes) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`,
-      [meal.name, meal.category, meal.notes]
+      `INSERT INTO meals (name, mealie_category_name, mealie_category_slug, notes)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (name) DO NOTHING`,
+      [meal.name, meal.mealieCategoryName, meal.mealieCategorySlug, meal.notes]
     );
   }
 

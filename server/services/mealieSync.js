@@ -25,23 +25,40 @@ async function getSettings() {
   if (!url || !apiKey) {
     throw new Error('Mealie is not configured. Set mealie_url and mealie_api_key in Settings.');
   }
+  // Validate URL — only allow http/https (self-hosted Mealie on local network is a valid use case)
+  let parsed;
+  try { parsed = new URL(url); } catch {
+    throw new Error('mealie_url is not a valid URL.');
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('mealie_url must use http or https.');
+  }
   return { url, apiKey };
 }
 
 async function mealieRequest(url, apiKey, path, params = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullPath = `${path}${qs ? '?' + qs : ''}`;
-  const cacheKey = `${url}${fullPath}`;
+  // Include a hash of apiKey in cache key so rotating the key invalidates cached responses
+  const cacheKey = `${url}|${apiKey.slice(-8)}${fullPath}`;
 
   const cached = cacheGet(cacheKey);
   if (cached !== null) return cached;
 
-  const res = await fetch(`${url}/api${fullPath}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let res;
+  try {
+    res = await fetch(`${url}/api${fullPath}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
@@ -67,16 +84,38 @@ async function searchRecipes(q = '', page = 1, perPage = 20) {
     name: r.name,
     description: r.description || '',
     imageId: r.id, // Mealie uses recipe id for image path
+    mealie_category_name: Array.isArray(r.recipeCategory) && r.recipeCategory.length > 0
+      ? (r.recipeCategory[0].name || null)
+      : null,
+    mealie_category_slug: Array.isArray(r.recipeCategory) && r.recipeCategory.length > 0
+      ? (r.recipeCategory[0].slug || null)
+      : null,
   }));
 }
 
 async function getMealPlan(startDate, endDate) {
   const { url, apiKey } = await getSettings();
-  const data = await mealieRequest(url, apiKey, '/meal-plans', {
-    start_date: startDate,
-    end_date: endDate,
-  });
-  return data.items || [];
+  const perPage = 100;
+  let page = 1;
+  let allItems = [];
+  while (true) {
+    const data = await mealieRequest(url, apiKey, '/households/mealplans', {
+      start_date: startDate,
+      end_date: endDate,
+      page,
+      perPage,
+    });
+    const items = data.items || [];
+    allItems = allItems.concat(items);
+    if (items.length < perPage) break;
+    page++;
+  }
+  return allItems;
 }
 
-module.exports = { searchRecipes, getMealPlan, getSettings };
+async function getRecipe(slug) {
+  const { url, apiKey } = await getSettings();
+  return mealieRequest(url, apiKey, `/recipes/${encodeURIComponent(slug)}`);
+}
+
+module.exports = { searchRecipes, getMealPlan, getSettings, getRecipe };

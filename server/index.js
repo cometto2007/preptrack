@@ -9,7 +9,10 @@ const batchesRouter = require('./routes/batches');
 const settingsRouter = require('./routes/settings');
 const notificationsRouter = require('./routes/notifications');
 const mealieRouter = require('./routes/mealie');
+const ticktickRouter = require('./routes/ticktick');
+const categoriesRouter = require('./routes/categories');
 const authMiddleware = require('./middleware/auth');
+const scheduler = require('./services/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +39,8 @@ app.use('/api/batches', batchesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/mealie', mealieRouter);
+app.use('/api/ticktick', ticktickRouter);
+app.use('/api/categories', categoriesRouter);
 
 
 // Serve built frontend in production
@@ -47,6 +52,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 runMigrations()
+  .then(() => scheduler.start())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`PrepTrack server running on port ${PORT}`);

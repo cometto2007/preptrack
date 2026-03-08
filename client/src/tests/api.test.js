@@ -22,7 +22,7 @@ describe('Settings API response shape', () => {
   // GET /api/settings returns { settings: { key: value, ... } }
   // Callers must read s.settings.mealie_url, NOT s.mealie_url
   it('mealie_url lives under settings key, not at root', () => {
-    const apiResponse = { settings: { mealie_url: 'https://mealie.example.com', expiry_days_meals: '90' } };
+    const apiResponse = { settings: { mealie_url: 'https://mealie.example.com', default_expiry_days: '90' } };
     expect(apiResponse.settings?.mealie_url).toBe('https://mealie.example.com');
     expect(apiResponse.mealie_url).toBeUndefined();
   });
@@ -35,19 +35,9 @@ describe('Settings API response shape', () => {
   });
 });
 
-describe('Category utilities', () => {
-  const CATEGORIES = ['Meals', 'Soups', 'Sauces', 'Baked Goods', 'Ingredients', 'Other'];
-
-  it('has all expected categories', () => {
-    expect(CATEGORIES).toHaveLength(6);
-    expect(CATEGORIES).toContain('Meals');
-    expect(CATEGORIES).toContain('Baked Goods');
-  });
-
-  it('converts category to settings key format', () => {
-    const toKey = (cat) => `expiry_days_${cat.toLowerCase().replace(/ /g, '_')}`;
-    expect(toKey('Meals')).toBe('expiry_days_meals');
-    expect(toKey('Baked Goods')).toBe('expiry_days_baked_goods');
-    expect(toKey('Soups')).toBe('expiry_days_soups');
+describe('Default expiry utilities', () => {
+  it('uses single default expiry key format', () => {
+    const settings = { default_expiry_days: '120' };
+    expect(settings.default_expiry_days).toBe('120');
   });
 });

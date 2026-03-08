@@ -9,7 +9,9 @@ import { formatDate } from '../utils/dates';
 import { buildExpiryMap } from '../utils/expiry';
 
 function parseLocalDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!dateStr) return new Date(NaN);
+  const dateOnly = String(dateStr).slice(0, 10); // supports both YYYY-MM-DD and full ISO timestamp
+  const [y, m, d] = dateOnly.split('-').map(Number);
   return new Date(y, m - 1, d); // local midnight, not UTC
 }
 
@@ -109,6 +111,7 @@ export default function ItemDetail() {
   const expiresInDays = earliestBatch ? daysUntil(earliestBatch.expiry_date) : null;
   const isExpired = expiresInDays !== null && expiresInDays < 0;
   const isExpiringSoon = expiresInDays !== null && expiresInDays >= 0 && expiresInDays <= 14;
+  const categoryName = meal.mealie_category_name || 'Uncategorised';
 
   async function handleAdjust(count, freezeDate, expiryDate) {
     setActionLoading(true);
@@ -156,7 +159,7 @@ export default function ItemDetail() {
         {/* Hero */}
         <div>
           <span className="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
-            {meal.category}
+            {categoryName}
           </span>
           <h1 className="text-3xl font-bold tracking-tight mt-2">{meal.name}</h1>
         </div>
@@ -288,7 +291,6 @@ export default function ItemDetail() {
           mode={counterMode}
           initialCount={counterMode === 'add' ? 2 : 1}
           maxCount={counterMode === 'remove' ? totalPortions : undefined}
-          category={meal.category}
           expiryDays={expiryDays}
           onConfirm={handleAdjust}
           onClose={() => setCounterMode(null)}

@@ -22,7 +22,13 @@ export const api = {
 
 // Meals
 export const mealsApi = {
-  list:       ()            => api.get('/meals'),
+  list:       (category, options = {})    => {
+    const qs = new URLSearchParams();
+    if (category) qs.set('category', category);
+    if (options.includeEmpty) qs.set('include_empty', '1');
+    const suffix = qs.toString();
+    return api.get(`/meals${suffix ? `?${suffix}` : ''}`);
+  },
   get:        (id)          => api.get(`/meals/${id}`),
   create:     (data)        => api.post('/meals', data),
   update:     (id, data)    => api.put(`/meals/${id}`, data),
@@ -39,25 +45,44 @@ export const batchesApi = {
 
 // Settings
 export const settingsApi = {
-  get:            ()       => api.get('/settings'),
-  update:         (data)   => api.put('/settings', data),
-  getSchedule:    ()       => api.get('/settings/schedule'),
-  updateSchedule: (day, d) => api.put(`/settings/schedule/${day}`, d),
+  get:              ()              => api.get('/settings'),
+  update:           (data)         => api.put('/settings', data),
+  getSchedule:      ()             => api.get('/settings/schedule'),
+  updateSchedule:   (day, d)       => api.put(`/settings/schedule/${day}`, d),
+  getOverrides:     ()             => api.get('/settings/overrides'),
+  addOverride:      (data)         => api.post('/settings/overrides', data),
+  deleteOverride:   (ws, dow, mt)  => api.delete(`/settings/overrides/${ws}/${dow}/${mt}`),
+  export:           ()             => fetch('/api/settings/export').then(r => r.blob()),
+  clearInventory:   ()             => api.delete('/settings/clear-inventory'),
 };
 
 // Mealie
 export const mealieApi = {
   searchRecipes: (q = '', page = 1, perPage = 20) =>
     api.get(`/mealie/recipes?q=${encodeURIComponent(q)}&page=${page}&perPage=${perPage}`),
+  getRecipe: (slug) =>
+    api.get(`/mealie/recipe/${encodeURIComponent(slug)}`),
   getMealPlan: (start, days = 7) =>
     api.get(`/mealie/meal-plan?start=${start}&days=${days}`),
   sync: () => api.post('/mealie/sync', {}),
 };
 
+// Categories
+export const categoriesApi = {
+  list: () => api.get('/categories'),
+};
+
+// TickTick
+export const ticktickApi = {
+  addToShoppingList: (slug, recipeName) =>
+    api.post('/ticktick/shopping-list', { slug, recipeName }),
+};
+
 // Notifications
 export const notificationsApi = {
-  getPending:  ()          => api.get('/notifications/pending'),
-  subscribe:   (sub)       => api.post('/notifications/subscribe', sub),
-  unsubscribe: (endpoint)  => api.post('/notifications/unsubscribe', { endpoint }),
-  resolve:     (id, action)=> api.post(`/notifications/resolve/${id}`, { action }),
+  getPending:      ()                   => api.get('/notifications/pending'),
+  getVapidKey:     ()                   => api.get('/notifications/vapid-public-key'),
+  subscribe:       (sub)                => api.post('/notifications/subscribe', sub),
+  unsubscribe:     (endpoint)           => api.post('/notifications/unsubscribe', { endpoint }),
+  resolve:         (id, data)           => api.post(`/notifications/resolve/${id}`, data),
 };

@@ -75,7 +75,7 @@ preptrack/
 ## Database Schema
 
 ```sql
-meals              -- id, name, category, mealie_recipe_slug, image_url, notes, created_at
+meals              -- id, name, mealie_recipe_slug, mealie_category_name, mealie_category_slug, image_url, notes, created_at
 batches            -- id, meal_id, portions_remaining, freeze_date, expiry_date, created_at
 activity_log       -- id, meal_id, batch_id, action, quantity, source, note, created_at
 reservations       -- id, meal_id, batch_id, meal_plan_date, meal_type, status, created_at, resolved_at
@@ -97,9 +97,10 @@ push_subscriptions -- id, endpoint, keys_p256dh, keys_auth, created_at
   - Status: Green = fresh/stocked | Amber = low/expiring | Red = missing/expired | Blue = reserved
 - **Navigation (mobile):** Bottom tab bar — Home, Plan, Recipes, Settings
 - **Navigation (desktop):** Left sidebar — Dashboard, Plan, Inventory, Add Item, Settings
-- **Categories:** Meals, Soups, Sauces, Baked Goods, Ingredients, Other
+- **Categories:** Sourced from Mealie (`recipeCategory[0]`), with `Uncategorised` for meals without a Mealie category
 - **Portions default:** 2 (household of 2)
 - **Batch model:** One meal entry, multiple batches underneath, FIFO removals
+- **Inventory visibility:** Dashboard/category counts show in-stock meals only (`total_portions > 0`); zero-stock meals stay in DB for history/reuse and are fetched only when explicitly requested
 - **Defrost default:** "Defrost 2" as primary prompt action
 - **NOT in v1:** QR codes, Stock Trends, Quick Insights, Freezer Capacity
 
@@ -124,6 +125,7 @@ Work one task at a time. Complete and test before moving on.
 - **Phase 1 — Foundation:** Scaffold (Vite+React+Tailwind+Express), DB migrations, app shell + nav, PWA stub
 - **Phase 2 — Core CRUD:** Meals/batches API, Dashboard, Add Item form, Item Detail, Quick Counter
 - **Phase 3 — Mealie Integration:** Mealie API service, Plan/Coverage screen, recipe autocomplete
+- **Phase 3.1 — Category Sync Update:** Remove hardcoded categories, store Mealie category name/slug on meals, dynamic category filters via `/api/categories`
 - **Phase 4 — Notifications:** Cron scheduler, Web Push, prompt UI, Telegram bot (optional)
 - **Phase 5 — Polish:** Settings screen, TickTick integration, PWA finalisation, Docker deployment
 

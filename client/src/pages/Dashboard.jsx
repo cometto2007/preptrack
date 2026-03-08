@@ -1,13 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 import { useMeals } from '../hooks/useMeals';
-import { mealsApi } from '../services/api';
+import { mealsApi, notificationsApi, categoriesApi } from '../services/api';
 import MealCard from '../components/shared/MealCard';
 import QuickCounter from '../components/shared/QuickCounter';
 import { getExpiryInfo } from '../components/shared/StatusBadge';
-
-const FILTERS = ['All', 'Expiring Soon', 'Meals', 'Soups', 'Sauces', 'Baked Goods', 'Ingredients', 'Other'];
+import LunchPrompt from '../components/prompts/LunchPrompt';
+import DinnerPrompt from '../components/prompts/DinnerPrompt';
 
 function SkeletonCard() {
   return (
@@ -29,6 +29,32 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [counterMeal, setCounterMeal] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [prompts, setPrompts] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const loadPrompts = useCallback(async () => {
+    try {
+      const { prompts: p } = await notificationsApi.getPending();
+      setPrompts(p || []);
+    } catch {
+      // non-fatal — prompts just don't show
+    }
+  }, []);
+
+  useEffect(() => { loadPrompts(); }, [loadPrompts]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const { categories: rows } = await categoriesApi.list();
+      setCategories(rows || []);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories, meals]);
 
   const stats = useMemo(() => {
     const total = meals.reduce((s, m) => s + m.total_portions, 0);
@@ -57,10 +83,27 @@ export default function Dashboard() {
         return getExpiryInfo(m.earliest_expiry)?.color === 'amber';
       });
     } else if (activeFilter !== 'All') {
-      list = list.filter(m => m.category === activeFilter);
+      if (activeFilter === 'Uncategorised') {
+        list = list.filter(m => !m.mealie_category_name);
+      } else {
+        list = list.filter(m => m.mealie_category_name === activeFilter);
+      }
     }
     return list;
   }, [meals, search, activeFilter]);
+
+  const filterChips = useMemo(() => {
+    const total = categories.reduce((sum, c) => sum + Number(c.count || 0), 0);
+    const fromApi = categories
+      .filter(c => c.name !== 'Uncategorised' || Number(c.count || 0) > 0)
+      .map(c => ({ label: c.name, count: Number(c.count || 0) }));
+    return [{ label: 'All', count: total }, { label: 'Expiring Soon', count: stats.expiringSoon }, ...fromApi];
+  }, [categories, stats.expiringSoon]);
+
+  useEffect(() => {
+    if (filterChips.some(c => c.label === activeFilter)) return;
+    setActiveFilter('All');
+  }, [filterChips, activeFilter]);
 
   async function handleRemove(count) {
     if (!counterMeal) return;
@@ -107,6 +150,23 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Daily planning prompts */}
+        {prompts.length > 0 && (
+          <section className="px-4 mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold tracking-tight">Daily Planning</h3>
+              <span className="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-full uppercase tracking-wider">
+                {prompts.length} Task{prompts.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {prompts.map(prompt =>
+              prompt.meal_type === 'lunch'
+                ? <LunchPrompt key={prompt.id} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
+                : <DinnerPrompt key={prompt.id} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
+            )}
+          </section>
+        )}
+
         {/* Search + filters */}
         <section className="px-4 space-y-3 mb-4">
           <div className="relative">
@@ -120,18 +180,18 @@ export default function Dashboard() {
             />
           </div>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-            {FILTERS.map(f => (
+            {filterChips.map(f => (
               <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                aria-pressed={activeFilter === f}
+                key={f.label}
+                onClick={() => setActiveFilter(f.label)}
+                aria-pressed={activeFilter === f.label}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeFilter === f
+                  activeFilter === f.label
                     ? 'bg-primary text-white'
                     : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {f}
+                {`${f.label} (${f.count})`}
               </button>
             ))}
           </div>

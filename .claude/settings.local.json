@@ -5,7 +5,14 @@
       "Read(//Users/christophercometto/**)",
       "Bash(export:*)",
       "Bash(git add:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(codex review -)",
+      "Bash(/tmp/phase4_recheck_prompt.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(gemini:*)",
+      "Bash(codex review:*)",
+      "Bash(grep:*)"
     ]
   }
 }

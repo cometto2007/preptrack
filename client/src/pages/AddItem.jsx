@@ -1,32 +1,30 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, ChevronDown, ChevronUp, Snowflake } from 'lucide-react';
 import { mealsApi, mealieApi } from '../services/api';
 import { useMeals } from '../hooks/useMeals';
 import { useSettings } from '../hooks/useSettings';
 import { localDateStr } from '../utils/dates';
-import { EXPIRY_DAYS, buildExpiryMap, calcExpiry } from '../utils/expiry';
-
-const CATEGORIES = Object.keys(EXPIRY_DAYS);
+import { buildExpiryMap, calcExpiry } from '../utils/expiry';
 
 export default function AddItem() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
   const editId = params.get('edit');
-  const { meals } = useMeals();
+  const { meals } = useMeals(undefined, { includeEmpty: true });
   const rawSettings = useSettings();
-  const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
+  const expiryDays = buildExpiryMap(rawSettings);
 
   const [name, setName] = useState(location.state?.name ?? params.get('name') ?? '');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mealieRecipeSuggestions, setMealieRecipeSuggestions] = useState([]);
   const [mealieSlug, setMealieSlug] = useState(location.state?.mealieSlug ?? null);
+  const [mealieCategoryName, setMealieCategoryName] = useState(location.state?.mealieCategoryName ?? null);
   const [portions, setPortions] = useState(2);
-  const [category, setCategory] = useState('Meals');
   const [freezeDate, setFreezeDate] = useState(localDateStr());
-  const [expiryDate, setExpiryDate] = useState(calcExpiry('Meals', localDateStr()));
+  const [expiryDate, setExpiryDate] = useState(calcExpiry(localDateStr(), expiryDays));
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,24 +33,31 @@ export default function AddItem() {
   const nameRef = useRef(null);
   const mealieDebounceRef = useRef(null);
 
-  // Pre-fill when editing
   useEffect(() => {
     if (!editId) return;
     setPrefilling(true);
     mealsApi.get(editId).then(({ meal }) => {
       setName(meal.name);
-      setCategory(meal.category);
       setNotes(meal.notes || '');
+      setMealieSlug(meal.mealie_recipe_slug || null);
+      setMealieCategoryName(meal.mealie_category_name || null);
       if (meal.notes) setShowNotes(true);
     }).catch(() => {}).finally(() => setPrefilling(false));
   }, [editId]);
 
-  // Recalculate expiry whenever category, freeze date, or live settings change
   useEffect(() => {
-    setExpiryDate(calcExpiry(category, freezeDate, expiryDays));
-  }, [category, freezeDate, expiryDays]);
+    setExpiryDate(calcExpiry(freezeDate, expiryDays));
+  }, [freezeDate, expiryDays]);
 
-  // Local autocomplete from existing meal names + Mealie recipe suggestions
+  useEffect(() => {
+    if (!mealieSlug || mealieCategoryName) return;
+    mealieApi.getRecipe(mealieSlug)
+      .then(({ recipe }) => {
+        setMealieCategoryName(recipe?.mealie_category_name || null);
+      })
+      .catch(() => {});
+  }, [mealieSlug, mealieCategoryName]);
+
   useEffect(() => {
     if (!name.trim()) {
       setSuggestions([]);
@@ -61,19 +66,16 @@ export default function AddItem() {
     }
     const q = name.toLowerCase();
 
-    // Local matches
     const localMatches = meals
       .filter(m => m.name.toLowerCase().includes(q) && m.name.toLowerCase() !== q)
       .slice(0, 5);
     setSuggestions(localMatches);
 
-    // Mealie suggestions — debounced, only when >= 2 chars
     if (name.trim().length >= 2) {
       if (mealieDebounceRef.current) clearTimeout(mealieDebounceRef.current);
       mealieDebounceRef.current = setTimeout(() => {
         mealieApi.searchRecipes(name)
           .then(({ recipes }) => {
-            // De-duplicate: skip if a local meal already has this slug
             const localSlugs = new Set(meals.map(m => m.mealie_recipe_slug).filter(Boolean));
             const filtered = (recipes || []).filter(r => !localSlugs.has(r.slug));
             setMealieRecipeSuggestions(filtered.slice(0, 5));
@@ -87,8 +89,10 @@ export default function AddItem() {
 
   function selectSuggestion(meal) {
     setName(meal.name);
-    setCategory(meal.category);
-    if (meal.notes) { setNotes(meal.notes); setShowNotes(true); }
+    setNotes(meal.notes || '');
+    setMealieSlug(meal.mealie_recipe_slug || null);
+    setMealieCategoryName(meal.mealie_category_name || null);
+    if (meal.notes) setShowNotes(true);
     setSuggestions([]);
     setMealieRecipeSuggestions([]);
     setShowSuggestions(false);
@@ -100,9 +104,9 @@ export default function AddItem() {
     setMealieRecipeSuggestions([]);
     setShowSuggestions(false);
     setMealieSlug(recipe.slug);
+    setMealieCategoryName(recipe.mealie_category_name || null);
   }
 
-  // Merged suggestions for the dropdown
   const allSuggestions = [
     ...suggestions.map(m => ({ ...m, _type: 'local' })),
     ...mealieRecipeSuggestions.map(r => ({ ...r, _type: 'mealie' })),
@@ -116,18 +120,26 @@ export default function AddItem() {
     setError(null);
     try {
       if (editId) {
-        await mealsApi.update(editId, { name: trimmedName, category, notes: notes || null });
+        await mealsApi.update(editId, {
+          name: trimmedName,
+          notes: notes || null,
+          mealie_recipe_slug: mealieSlug || null,
+        });
       } else {
-        // Find existing meal by exact name (case-insensitive)
         const existing = meals.find(m => m.name.toLowerCase() === trimmedName.toLowerCase());
-        const mealId = existing
-          ? existing.id
-          : (await mealsApi.create({
-              name: trimmedName,
-              category,
-              notes: notes || null,
-              mealie_recipe_slug: mealieSlug || undefined,
-            })).meal.id;
+        let mealId;
+        if (existing) {
+          mealId = existing.id;
+          if (mealieSlug && !existing.mealie_recipe_slug) {
+            await mealsApi.update(existing.id, { mealie_recipe_slug: mealieSlug });
+          }
+        } else {
+          mealId = (await mealsApi.create({
+            name: trimmedName,
+            notes: notes || null,
+            mealie_recipe_slug: mealieSlug || undefined,
+          })).meal.id;
+        }
 
         await mealsApi.increment(mealId, {
           portions,
@@ -136,18 +148,18 @@ export default function AddItem() {
         });
       }
       navigate('/');
-    } catch (e) {
-      setError(e.message);
+    } catch (submitError) {
+      setError(submitError.message);
     } finally {
       setSubmitting(false);
     }
   }
 
   const isEdit = Boolean(editId);
+  const categoryBadge = mealieCategoryName || 'Uncategorised';
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-bg-app/80 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-slate-800">
         <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
           <ArrowLeft size={20} />
@@ -165,7 +177,6 @@ export default function AddItem() {
 
       <form onSubmit={handleSubmit} className={`flex-1 flex flex-col ${prefilling ? 'hidden' : ''}`}>
         <div className="flex flex-col gap-6 p-4 pb-28">
-          {/* Meal name */}
           <section className="flex flex-col gap-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Meal Name</label>
             <div className="relative">
@@ -194,11 +205,10 @@ export default function AddItem() {
                           className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800 flex items-center justify-between min-h-[48px]"
                         >
                           <span className="font-medium">{item.name}</span>
-                          <span className="text-xs text-slate-400">{item.category}</span>
+                          <span className="text-xs text-slate-400">{item.mealie_category_name || 'Uncategorised'}</span>
                         </button>
                       );
                     }
-                    // Mealie recipe suggestion
                     return (
                       <button
                         key={`mealie-${item.id}`}
@@ -207,7 +217,7 @@ export default function AddItem() {
                         className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800 flex items-center justify-between min-h-[48px]"
                       >
                         <span className="font-medium">{item.name}</span>
-                        <span className="text-xs text-teal-400">Recipe</span>
+                        <span className="text-xs text-teal-400">{item.mealie_category_name || 'Recipe'}</span>
                       </button>
                     );
                   })}
@@ -216,7 +226,18 @@ export default function AddItem() {
             </div>
           </section>
 
-          {/* Portions — hidden for edit mode */}
+          {mealieSlug && (
+            <section className="flex flex-col gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
+              <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                <p className="text-sm text-slate-200">
+                  <span className="font-semibold">{categoryBadge}</span>
+                  <span className="text-slate-500"> — from Mealie</span>
+                </p>
+              </div>
+            </section>
+          )}
+
           {!isEdit && (
             <section className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700">
               <div className="flex items-center gap-3">
@@ -245,28 +266,6 @@ export default function AddItem() {
             </section>
           )}
 
-          {/* Category */}
-          <section className="flex flex-col gap-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-1">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    category === cat
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-800 border border-slate-700 text-slate-300 hover:border-primary/50'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Dates — hidden for edit mode */}
           {!isEdit && (
             <section className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
@@ -290,7 +289,6 @@ export default function AddItem() {
             </section>
           )}
 
-          {/* Notes */}
           <section className="flex flex-col gap-2">
             <button
               type="button"
@@ -315,7 +313,6 @@ export default function AddItem() {
           {error && <p className="text-red-400 text-sm">{error}</p>}
         </div>
 
-        {/* Sticky submit */}
         <div className="fixed bottom-0 left-0 right-0 md:left-64 p-4 bg-bg-app/90 backdrop-blur-xl border-t border-slate-800 z-20 safe-bottom">
           <button
             type="submit"

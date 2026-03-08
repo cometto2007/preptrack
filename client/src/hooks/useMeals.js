@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { mealsApi } from '../services/api';
 
-export function useMeals() {
+export function useMeals(category, options = {}) {
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -9,7 +9,7 @@ export function useMeals() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await mealsApi.list();
+      const data = await mealsApi.list(category, options);
       setMeals(data.meals);
       setError(null);
     } catch (e) {
@@ -17,7 +17,7 @@ export function useMeals() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [category, options.includeEmpty]);
 
   useEffect(() => { load(); }, [load]);
 

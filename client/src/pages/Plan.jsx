@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMealiePlan } from '../hooks/useMealiePlan';
 import { localDateStr, formatDateShort } from '../utils/dates';
+import { ticktickApi } from '../services/api';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -47,16 +49,39 @@ function StatusBadge({ status, portions }) {
 function SlotRow({ day, slot, isToday, isPast, navigate }) {
   const needsAction = slot.status === 'missing' || slot.status === 'unplanned';
   const isOff = slot.status === 'off';
+  const [adding, setAdding] = useState(false);
+  const [listStatus, setListStatus] = useState(null); // null | 'ok' | 'error'
+
+  async function handleShoppingList() {
+    setAdding(true);
+    setListStatus(null);
+    try {
+      await ticktickApi.addToShoppingList(slot.slug, slot.recipeName);
+      setListStatus('ok');
+      setTimeout(() => setListStatus(null), 3000);
+    } catch {
+      setListStatus('error');
+      setTimeout(() => setListStatus(null), 4000);
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <div className={`flex items-center gap-4 px-4 py-4 transition-colors
-      ${isPast ? 'opacity-40' : ''}
       ${isOff ? 'bg-slate-900/20' : 'hover:bg-slate-900/40'}
     `}>
       <div className="flex flex-col min-w-[60px]">
         <span className="text-xs font-bold text-slate-400 uppercase">{DOW[day.dayOfWeek]}</span>
         <span className="text-sm font-semibold capitalize">{slot.type}</span>
       </div>
+      {slot.recipeId && (
+        <img
+          src={`/api/mealie/recipe-image/${slot.recipeId}`}
+          alt={slot.recipeName}
+          className="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-800"
+        />
+      )}
       <div className="flex-1 min-w-0">
         {slot.recipeName ? (
           <p className="font-medium truncate">{slot.recipeName}</p>
@@ -68,6 +93,26 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <StatusBadge status={slot.status} portions={slot.portions} />
+        {needsAction && slot.slug && (
+          <button
+            onClick={handleShoppingList}
+            disabled={adding}
+            title={
+              listStatus === 'ok' ? 'Added to TickTick!'
+              : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
+              : 'Add ingredients to TickTick shopping list'
+            }
+            className={`flex items-center justify-center w-10 h-10 rounded transition-colors border ${
+              listStatus === 'ok'
+                ? 'bg-green-900/30 border-green-700 text-green-400'
+                : listStatus === 'error'
+                ? 'bg-red-900/30 border-red-700 text-red-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
+            } disabled:opacity-50`}
+          >
+            <ShoppingCart size={14} />
+          </button>
+        )}
         {needsAction && (
           <button
             onClick={() => navigate('/add', {
@@ -76,7 +121,7 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
                 mealieSlug: slot.slug || null,
               },
             })}
-            className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-2 py-1 rounded border border-primary/10 min-h-[32px]"
+            className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 rounded border border-primary/10 min-h-[48px]"
           >
             <span className="text-[10px] font-bold uppercase">Add</span>
           </button>

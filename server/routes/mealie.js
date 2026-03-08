@@ -12,14 +12,26 @@ router.get('/recipes', async (req, res) => {
     const recipes = await mealieSync.searchRecipes(q, page, perPage);
     res.json({ recipes });
   } catch (err) {
-    // Gracefully return empty list if Mealie is not configured
     if (err.message && err.message.includes('not configured')) {
       return res.json({ recipes: [] });
     }
     console.error('[mealie] searchRecipes error:', err.message);
-    res.json({ recipes: [] });
+    res.status(502).json({ error: err.message || 'Failed to fetch recipes from Mealie' });
   }
 });
+
+// Adds n days to a YYYY-MM-DD string using local date arithmetic (no UTC shift)
+function addDaysToDateStr(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+// Returns today as YYYY-MM-DD in local time
+function localDateStr() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
 
 // GET /api/mealie/meal-plan?start=YYYY-MM-DD&days=7
 router.get('/meal-plan', async (req, res) => {
@@ -29,12 +41,15 @@ router.get('/meal-plan', async (req, res) => {
   if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
     return res.status(400).json({ error: 'start date (YYYY-MM-DD) is required' });
   }
+  // Reject invalid calendar dates (e.g. 2026-99-99 passes the regex but is not real)
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const startCheck = new Date(sy, sm - 1, sd);
+  if (startCheck.getFullYear() !== sy || startCheck.getMonth() + 1 !== sm || startCheck.getDate() !== sd) {
+    return res.status(400).json({ error: 'start is not a valid calendar date' });
+  }
 
-  // Calculate end date
-  const startDt = new Date(`${start}T00:00:00`);
-  const endDt = new Date(startDt);
-  endDt.setDate(endDt.getDate() + days - 1);
-  const endDate = endDt.toISOString().slice(0, 10);
+  // Calculate end date using local-date arithmetic (avoids UTC timezone drift)
+  const endDate = addDaysToDateStr(start, days - 1);
 
   // Fetch PrepTrack meals with total portions
   const { rows: meals } = await pool.query(
@@ -52,7 +67,7 @@ router.get('/meal-plan', async (req, res) => {
   const { rows: settingRows } = await pool.query(
     "SELECT value FROM settings WHERE key = 'default_portions'"
   );
-  const lowThreshold = parseInt(settingRows[0]?.value ?? '2', 10);
+  const lowThreshold = parseInt(settingRows[0]?.value, 10) || 2;
   // Map day_of_week -> { lunch_enabled, dinner_enabled }
   const scheduleMap = {};
   for (const row of schedule) {
@@ -67,17 +82,23 @@ router.get('/meal-plan', async (req, res) => {
   try {
     mealieEntries = await mealieSync.getMealPlan(start, endDate);
   } catch (err) {
-    if (!err.message.includes('not configured')) {
+    if (err.message && err.message.includes('not configured')) {
+      // Mealie not set up — return plan without recipe data
+    } else {
       console.error('[mealie] getMealPlan error:', err.message);
+      return res.status(502).json({ error: err.message || 'Failed to fetch meal plan from Mealie' });
     }
-    // Proceed without Mealie data
   }
 
   // Index Mealie entries by date+type
+  // Support both snake_case (entry_type) and camelCase (entryType) field names
+  // across Mealie API versions
   const mealieMap = {}; // `${date}:${entry_type}` -> entry
   for (const entry of mealieEntries) {
     const entryDate = entry.date; // YYYY-MM-DD
-    const entryType = (entry.entry_type || '').toLowerCase(); // 'lunch' or 'dinner'
+    const rawType = entry.entry_type || entry.entryType || '';
+    const entryType = rawType.toLowerCase(); // 'lunch' or 'dinner'
+    if (!entryDate || !entryType) continue;
     const key = `${entryDate}:${entryType}`;
     mealieMap[key] = entry;
   }
@@ -90,7 +111,7 @@ router.get('/meal-plan', async (req, res) => {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const resultDays = [];
   let totalEnabled = 0;
   let covered = 0;
@@ -98,10 +119,9 @@ router.get('/meal-plan', async (req, res) => {
   let missing = 0;
 
   for (let i = 0; i < days; i++) {
-    const dt = new Date(startDt);
-    dt.setDate(dt.getDate() + i);
-    const dateStr = dt.toISOString().slice(0, 10);
-    const dayOfWeek = dt.getDay(); // 0=Sun
+    const dateStr = addDaysToDateStr(start, i);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Sun, local date
     const sched = scheduleMap[dayOfWeek] || { lunchEnabled: true, dinnerEnabled: true };
 
     const slots = [];
@@ -123,6 +143,7 @@ router.get('/meal-plan', async (req, res) => {
 
       const recipe = mealieEntry.recipe;
       const slug = recipe.slug;
+      const recipeId = recipe.id || null;
       const ptMeal = slugToMeal[slug];
       const portions = ptMeal ? Number(ptMeal.total_portions) : 0;
 
@@ -142,6 +163,7 @@ router.get('/meal-plan', async (req, res) => {
         type: slotType,
         recipeName: recipe.name,
         slug,
+        recipeId,
         preptrackId: ptMeal ? ptMeal.id : null,
         status,
         portions,
@@ -162,6 +184,40 @@ router.get('/meal-plan', async (req, res) => {
   });
 });
 
+function firstRecipeCategory(recipe) {
+  if (!Array.isArray(recipe?.recipeCategory) || recipe.recipeCategory.length === 0) {
+    return { name: null, slug: null };
+  }
+  return {
+    name: recipe.recipeCategory[0]?.name || null,
+    slug: recipe.recipeCategory[0]?.slug || null,
+  };
+}
+
+// GET /api/mealie/recipe/:slug
+router.get('/recipe/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    if (!slug) return res.status(400).json({ error: 'slug is required' });
+    const recipe = await mealieSync.getRecipe(slug);
+    const category = firstRecipeCategory(recipe);
+    res.json({
+      recipe: {
+        id: recipe.id,
+        slug: recipe.slug,
+        name: recipe.name,
+        mealie_category_name: category.name,
+        mealie_category_slug: category.slug,
+      },
+    });
+  } catch (err) {
+    if (err.message && err.message.includes('not configured')) {
+      return res.status(400).json({ error: 'Mealie is not configured' });
+    }
+    res.status(502).json({ error: err.message || 'Failed to fetch recipe' });
+  }
+});
+
 // POST /api/mealie/sync — link PrepTrack meals to Mealie recipes by name
 router.post('/sync', async (req, res) => {
   try {
@@ -177,24 +233,48 @@ router.post('/sync', async (req, res) => {
       page++;
     }
 
-    // Fetch PrepTrack meals that have no mealie_recipe_slug
+    // Fetch PrepTrack meals that have no mealie slug or missing stored category metadata
     const { rows: meals } = await pool.query(
-      "SELECT id, name FROM meals WHERE mealie_recipe_slug IS NULL OR mealie_recipe_slug = ''"
+      `SELECT id, name
+       FROM meals
+       WHERE mealie_recipe_slug IS NULL
+          OR mealie_recipe_slug = ''
+          OR mealie_category_name IS NULL
+          OR BTRIM(mealie_category_name) = ''`
     );
 
-    // Build a map of Mealie recipe name (lower) -> slug
+    // Build a map of Mealie recipe name (lower) -> recipe metadata
     const mealieByName = {};
     for (const r of allRecipes) {
-      mealieByName[r.name.toLowerCase()] = r.slug;
+      mealieByName[r.name.toLowerCase()] = {
+        slug: r.slug,
+        mealie_category_name: r.mealie_category_name || null,
+        mealie_category_slug: r.mealie_category_slug || null,
+      };
     }
 
     let linked = 0;
     for (const meal of meals) {
-      const slug = mealieByName[meal.name.toLowerCase()];
-      if (slug) {
+      const match = mealieByName[meal.name.toLowerCase()];
+      if (match?.slug) {
+        let categoryName = match.mealie_category_name;
+        let categorySlug = match.mealie_category_slug;
+        if (!categoryName) {
+          try {
+            const recipe = await mealieSync.getRecipe(match.slug);
+            const category = firstRecipeCategory(recipe);
+            categoryName = category.name;
+            categorySlug = category.slug;
+          } catch {
+            categoryName = null;
+            categorySlug = null;
+          }
+        }
         await pool.query(
-          'UPDATE meals SET mealie_recipe_slug = $1 WHERE id = $2',
-          [slug, meal.id]
+          `UPDATE meals
+           SET mealie_recipe_slug = $1, mealie_category_name = $2, mealie_category_slug = $3
+           WHERE id = $4`,
+          [match.slug, categoryName, categorySlug, meal.id]
         );
         linked++;
       }
@@ -207,6 +287,36 @@ router.post('/sync', async (req, res) => {
     }
     console.error('[mealie] sync error:', err);
     res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+// GET /api/mealie/recipe-image/:recipeId — proxies recipe image from Mealie with auth
+router.get('/recipe-image/:recipeId', async (req, res) => {
+  try {
+    const { recipeId } = req.params;
+    // Validate: Mealie recipe IDs are UUIDs
+    if (!/^[0-9a-f-]{36}$/i.test(recipeId)) {
+      return res.status(400).end();
+    }
+    const { url, apiKey } = await mealieSync.getSettings();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let imgRes;
+    try {
+      imgRes = await fetch(`${url}/api/media/recipes/${recipeId}/images/original.webp`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!imgRes.ok) return res.status(imgRes.status).end();
+    const buffer = await imgRes.arrayBuffer();
+    res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/webp');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(Buffer.from(buffer));
+  } catch {
+    res.status(502).end();
   }
 });
 

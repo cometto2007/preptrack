@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { localDateStr, formatDate } from '../../utils/dates';
-import { calcExpiry, EXPIRY_DAYS } from '../../utils/expiry';
+import { calcExpiry, DEFAULT_EXPIRY_DAYS } from '../../utils/expiry';
 
 // Bottom sheet overlay for specifying portion count.
 // mode: 'add' | 'remove'
-// add mode: pass category + expiryDays so the sheet can own freeze/expiry date state.
+// add mode: pass expiryDays so the sheet can own freeze/expiry date state.
 //   onConfirm(count, freezeDate, expiryDate) — callers must accept all three args.
 // remove mode: onConfirm(count)
 export default function QuickCounter({
@@ -13,8 +13,7 @@ export default function QuickCounter({
   mode = 'add',
   initialCount = 2,
   maxCount,
-  category,
-  expiryDays = EXPIRY_DAYS,
+  expiryDays = DEFAULT_EXPIRY_DAYS,
   onConfirm,
   onClose,
 }) {
@@ -23,10 +22,8 @@ export default function QuickCounter({
 
   useEffect(() => { setCount(initialCount); }, [initialCount]);
 
-  // Derive expiry from the live freeze date + category + settings
-  const effectiveCategory = category ?? meal?.category;
-  const expiryDate = (mode === 'add' && effectiveCategory)
-    ? calcExpiry(effectiveCategory, freezeDate, expiryDays)
+  const expiryDate = mode === 'add'
+    ? calcExpiry(freezeDate, expiryDays)
     : null;
 
   const canDecrease = count > 0;

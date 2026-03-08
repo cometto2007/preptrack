@@ -70,17 +70,13 @@ export default function Recipes() {
       .finally(() => setLoading(false));
   }
 
-  // Load on mount with empty query
-  useEffect(() => {
-    loadRecipes('');
-  }, []);
-
-  // Debounced search on query change
+  // Load on mount (immediately) and debounce subsequent query changes
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const delay = query === '' ? 0 : 300;
     debounceRef.current = setTimeout(() => {
       loadRecipes(query);
-    }, 300);
+    }, delay);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 

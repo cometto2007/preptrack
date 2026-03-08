@@ -3,9 +3,9 @@
 CREATE TABLE IF NOT EXISTS meals (
   id          SERIAL PRIMARY KEY,
   name        TEXT NOT NULL UNIQUE,
-  category    TEXT NOT NULL DEFAULT 'Meals'
-                CHECK (category IN ('Meals','Soups','Sauces','Baked Goods','Ingredients','Other')),
   mealie_recipe_slug TEXT,
+  mealie_category_name TEXT,
+  mealie_category_slug TEXT,
   image_url   TEXT,
   notes       TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -98,10 +98,5 @@ INSERT INTO settings (key, value) VALUES
   ('mealie_url',             ''),
   ('mealie_api_key',         ''),
   ('mealie_sync_frequency',  '6h'),
-  ('expiry_days_meals',      '90'),
-  ('expiry_days_soups',      '180'),
-  ('expiry_days_sauces',     '180'),
-  ('expiry_days_baked_goods','90'),
-  ('expiry_days_ingredients','180'),
-  ('expiry_days_other',      '90')
+  ('default_expiry_days',    '90')
 ON CONFLICT (key) DO NOTHING;
