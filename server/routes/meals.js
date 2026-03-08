@@ -94,6 +94,8 @@ router.put('/:id', async (req, res) => {
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key] ?? null;
     }
+    // Normalize name the same way POST does
+    if (updates.name) updates.name = updates.name.trim();
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }

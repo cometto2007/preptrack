@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+const { runMigrations } = require('./db/migrate');
 const mealsRouter = require('./routes/meals');
 const batchesRouter = require('./routes/batches');
 const settingsRouter = require('./routes/settings');
@@ -45,6 +46,13 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`PrepTrack server running on port ${PORT}`);
-});
+runMigrations()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`PrepTrack server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Startup migration failed:', err);
+    process.exit(1);
+  });

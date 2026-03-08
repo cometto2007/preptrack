@@ -197,6 +197,7 @@ function StatCard({ label, value, sub, valueClass = '' }) {
 
 function EmptyState({ search, filter, onAdd }) {
   const isFiltered = search || filter !== 'All';
+  const hasSearch = Boolean(search.trim());
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">🧊</div>
@@ -211,6 +212,11 @@ function EmptyState({ search, filter, onAdd }) {
       {!isFiltered && (
         <button onClick={onAdd} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
           Add First Meal
+        </button>
+      )}
+      {hasSearch && (
+        <button onClick={onAdd} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
+          Add &ldquo;{search.trim()}&rdquo; to freezer
         </button>
       )}
     </div>

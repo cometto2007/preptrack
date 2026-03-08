@@ -3,8 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./connection');
 
-async function migrate() {
-  // Ensure migration tracking table exists
+// Core migration logic — reusable by the server at startup.
+// Does NOT call pool.end() so the caller controls connection lifetime.
+async function runMigrations() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       filename   TEXT PRIMARY KEY,
@@ -33,10 +34,17 @@ async function migrate() {
   }
 
   console.log(ran > 0 ? `${ran} migration(s) applied.` : 'Nothing to migrate.');
-  await pool.end();
 }
 
-migrate().catch(err => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+module.exports = { runMigrations };
+
+// When executed directly (npm run migrate), run and exit
+if (require.main === module) {
+  runMigrations()
+    .then(() => pool.end())
+    .catch(err => {
+      console.error('Migration failed:', err);
+      pool.end();
+      process.exit(1);
+    });
+}
