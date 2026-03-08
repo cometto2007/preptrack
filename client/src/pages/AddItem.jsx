@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, ChevronDown, ChevronUp, Snowflake } from 'lucide-react';
 import { mealsApi } from '../services/api';
 import { useMeals } from '../hooks/useMeals';
+import { useSettings } from '../hooks/useSettings';
 import { localDateStr } from '../utils/dates';
-import { EXPIRY_DAYS, calcExpiry } from '../utils/expiry';
+import { EXPIRY_DAYS, buildExpiryMap, calcExpiry } from '../utils/expiry';
 
 const CATEGORIES = Object.keys(EXPIRY_DAYS);
 
@@ -13,6 +14,8 @@ export default function AddItem() {
   const [params] = useSearchParams();
   const editId = params.get('edit');
   const { meals } = useMeals();
+  const rawSettings = useSettings();
+  const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
 
   const [name, setName] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -38,10 +41,10 @@ export default function AddItem() {
     }).catch(() => {});
   }, [editId]);
 
-  // Recalculate expiry whenever category or freeze date changes
+  // Recalculate expiry whenever category, freeze date, or live settings change
   useEffect(() => {
-    setExpiryDate(calcExpiry(category, freezeDate));
-  }, [category, freezeDate]);
+    setExpiryDate(calcExpiry(category, freezeDate, expiryDays));
+  }, [category, freezeDate, expiryDays]);
 
   // Autocomplete from existing meal names
   useEffect(() => {

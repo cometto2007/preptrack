@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, CheckCircle, AlertCircle, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useMeal } from '../hooks/useMeals';
+import { useSettings } from '../hooks/useSettings';
 import { mealsApi, settingsApi } from '../services/api';
 import QuickCounter from '../components/shared/QuickCounter';
 import { formatDate } from '../utils/dates';
-import { calcExpiry } from '../utils/expiry';
+import { buildExpiryMap, calcExpiry } from '../utils/expiry';
+import { localDateStr } from '../utils/dates';
 
 function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr)) / 86400000);
@@ -73,6 +75,8 @@ export default function ItemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, loading, error, reload } = useMeal(id);
+  const rawSettings = useSettings();
+  const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
   const [counterMode, setCounterMode] = useState(null); // 'add' | 'remove' | null
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
@@ -91,8 +95,8 @@ export default function ItemDetail() {
   const sortedDesc = [...activeBatches].sort((a, b) => new Date(b.freeze_date) - new Date(a.freeze_date));
   const earliestBatch = sortedAsc[0];
   const latestBatch   = sortedDesc[0];
-  // Pre-calculate expiry date for the QuickCounter add flow
-  const addExpiryDate = calcExpiry(meal.category, new Date().toISOString().split('T')[0]);
+  // Pre-calculate expiry date for the QuickCounter add flow using live settings
+  const addExpiryDate = calcExpiry(meal.category, localDateStr(), expiryDays);
 
   const frozenDays = latestBatch ? daysSince(latestBatch.freeze_date) : null;
   const expiresInDays = earliestBatch ? daysUntil(earliestBatch.expiry_date) : null;
