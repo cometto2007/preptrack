@@ -105,17 +105,22 @@ router.post('/:id/increment', async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { portions = 2, freeze_date, expiry_date, category } = req.body;
+    const { portions = 2, freeze_date, expiry_date } = req.body;
 
     await client.query('BEGIN');
 
-    // Determine expiry from category default if not provided
+    // Determine expiry from the meal's DB category if not explicitly provided
     let finalExpiry = expiry_date;
     if (!finalExpiry) {
-      const cat = (category || 'meals').toLowerCase().replace(' ', '_');
+      const { rows: mealRows } = await client.query('SELECT category FROM meals WHERE id = $1', [id]);
+      if (!mealRows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Meal not found' });
+      }
+      const cat = mealRows[0].category.toLowerCase().replace(/ /g, '_');
       const settingKey = `expiry_days_${cat}`;
-      const { rows } = await client.query('SELECT value FROM settings WHERE key = $1', [settingKey]);
-      const days = rows.length ? parseInt(rows[0].value) : 90;
+      const { rows: settingRows } = await client.query('SELECT value FROM settings WHERE key = $1', [settingKey]);
+      const days = settingRows.length ? parseInt(settingRows[0].value) : 90;
       const fd = freeze_date ? new Date(freeze_date) : new Date();
       fd.setDate(fd.getDate() + days);
       finalExpiry = fd.toISOString().split('T')[0];
@@ -153,10 +158,11 @@ router.post('/:id/decrement', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // FIFO: get batches oldest first with remaining portions
+    // FIFO: get batches oldest first with remaining portions, lock rows to prevent races
     const { rows: batches } = await client.query(
       `SELECT * FROM batches WHERE meal_id = $1 AND portions_remaining > 0
-       ORDER BY freeze_date ASC`,
+       ORDER BY freeze_date ASC
+       FOR UPDATE`,
       [id]
     );
 

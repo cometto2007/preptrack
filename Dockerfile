@@ -14,7 +14,7 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev
 
 COPY server/ ./
-COPY --from=frontend-builder /app/server/public ./public
+COPY --from=frontend-builder /app/client/dist ./public
 
 EXPOSE 3001
 ENV NODE_ENV=production

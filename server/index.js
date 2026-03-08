@@ -16,6 +16,11 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
+// Health check must be before auth middleware so Docker healthchecks always work
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Parse Authelia SSO headers in production
 if (process.env.NODE_ENV === 'production') {
   app.use(authMiddleware);
@@ -28,10 +33,6 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/mealie', mealieRouter);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // Serve built frontend in production
 if (process.env.NODE_ENV === 'production') {

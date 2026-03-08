@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Read(//Users/christophercometto/**)",
+      "Bash(export:*)",
+      "Bash(git add:*)",
+      "Bash(git:*)"
+    ]
+  }
+}
