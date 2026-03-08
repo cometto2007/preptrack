@@ -137,3 +137,18 @@ Work one task at a time. Complete and test before moving on.
 - Skeleton loaders, not spinners, for loading states
 - All primary tap targets must be >= 48px (one-handed kitchen use)
 - After each phase, run the app and verify before starting the next phase
+
+## Release + Unraid Rollout
+
+- Commit all tested changes to `main` and push to GitHub before deployment
+- Create an annotated tag for the rollout snapshot (example: `v0.3.0`) and push the tag
+- Deploy Unraid from the release tag, not an unpinned moving branch
+- Use a dedicated production Postgres database/user for PrepTrack
+- Required env vars: `DATABASE_URL`, `NODE_ENV=production`, `PORT=3001`, `CORS_ORIGIN`
+- Configure Mealie integration in-app (`mealie_url`, `mealie_api_key`) after first boot
+- Optional push env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Validate post-deploy with smoke checks:
+  - `/api/health` returns OK
+  - dashboard loads inventory
+  - Mealie recipe search and link flow works
+  - category inheritance and filters behave as expected

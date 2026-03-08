@@ -5,7 +5,8 @@ function todayMidnight() {
 
 export function getExpiryInfo(earliestExpiry) {
   if (!earliestExpiry) return null;
-  const [y, m, d] = earliestExpiry.split('-').map(Number);
+  const dateOnly = String(earliestExpiry).slice(0, 10); // supports YYYY-MM-DD and ISO timestamps
+  const [y, m, d] = dateOnly.split('-').map(Number);
   const expiry = new Date(y, m - 1, d); // local midnight
   // Compare midnight-to-midnight so time-of-day doesn't flip today → expired
   const daysLeft = Math.floor((expiry - todayMidnight()) / 86400000);

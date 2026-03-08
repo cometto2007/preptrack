@@ -8,7 +8,8 @@ export function localDateStr(date = new Date()) {
 
 // Parse a YYYY-MM-DD string as LOCAL midnight (avoids UTC-shift in non-UTC timezones)
 function parseLocalDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateOnly = String(dateStr).slice(0, 10); // supports YYYY-MM-DD and ISO timestamps
+  const [y, m, d] = dateOnly.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
