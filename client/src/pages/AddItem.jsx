@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, ChevronDown, ChevronUp, Snowflake } from 'lucide-react';
 import { mealsApi } from '../services/api';
 import { useMeals } from '../hooks/useMeals';
@@ -11,13 +11,14 @@ const CATEGORIES = Object.keys(EXPIRY_DAYS);
 
 export default function AddItem() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const editId = params.get('edit');
   const { meals } = useMeals();
   const rawSettings = useSettings();
   const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(location.state?.name ?? '');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [portions, setPortions] = useState(2);

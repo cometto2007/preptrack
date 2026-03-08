@@ -142,7 +142,7 @@ export default function Dashboard() {
           {loading ? (
             <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
           ) : filtered.length === 0 ? (
-            <EmptyState search={search} filter={activeFilter} onAdd={() => navigate('/add')} />
+            <EmptyState search={search} filter={activeFilter} onAdd={() => navigate('/add', search.trim() ? { state: { name: search.trim() } } : undefined)} />
           ) : (
             filtered.map(meal => (
               <MealCard

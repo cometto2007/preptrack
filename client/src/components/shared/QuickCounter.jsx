@@ -15,8 +15,8 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} />
+      {/* Backdrop — z-[45] sits above BottomNav (z-40) but below the sheet (z-50) */}
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]" onClick={onClose} />
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
