@@ -45,10 +45,14 @@ router.get('/meal-plan', async (req, res) => {
      GROUP BY m.id`
   );
 
-  // Fetch schedule
+  // Fetch schedule + default_portions setting
   const { rows: schedule } = await pool.query(
     'SELECT day_of_week, lunch_enabled, dinner_enabled FROM schedule'
   );
+  const { rows: settingRows } = await pool.query(
+    "SELECT value FROM settings WHERE key = 'default_portions'"
+  );
+  const lowThreshold = parseInt(settingRows[0]?.value ?? '2', 10);
   // Map day_of_week -> { lunch_enabled, dinner_enabled }
   const scheduleMap = {};
   for (const row of schedule) {
@@ -126,7 +130,7 @@ router.get('/meal-plan', async (req, res) => {
       if (!ptMeal || portions === 0) {
         status = 'missing';
         missing++;
-      } else if (portions <= 2) {
+      } else if (portions <= lowThreshold) {
         status = 'low';
         low++;
       } else {
@@ -162,7 +166,6 @@ router.get('/meal-plan', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     // Fetch all Mealie recipes (paginate)
-    const { url, apiKey } = await mealieSync.getSettings();
     const perPage = 50;
     let page = 1;
     let allRecipes = [];

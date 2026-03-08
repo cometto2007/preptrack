@@ -70,7 +70,12 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
         <StatusBadge status={slot.status} portions={slot.portions} />
         {needsAction && (
           <button
-            onClick={() => navigate('/add')}
+            onClick={() => navigate('/add', {
+              state: {
+                name: slot.recipeName || '',
+                mealieSlug: slot.slug || null,
+              },
+            })}
             className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-2 py-1 rounded border border-primary/10 min-h-[32px]"
           >
             <span className="text-[10px] font-bold uppercase">Add</span>
@@ -224,7 +229,7 @@ export default function Plan() {
           <div className="border-t border-slate-800">
             {data.days.map(day => {
               const isPast = day.date < today;
-              const isToday = day.isToday;
+              const isToday = day.date === today; // computed client-side to avoid server UTC skew
               const allOff = day.slots.every(s => s.status === 'off');
 
               return (
