@@ -1,0 +1,44 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-preptrack}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-preptrack}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
+      MEALIE_URL: ${MEALIE_URL:-}
+      MEALIE_API_KEY: ${MEALIE_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      # Traefik labels — update domain as needed
+      - "traefik.enable=true"
+      - "traefik.http.routers.preptrack.rule=Host(`preptrack.yourdomain.com`)"
+      - "traefik.http.routers.preptrack.entrypoints=websecure"
+      - "traefik.http.routers.preptrack.tls.certresolver=letsencrypt"
+      - "traefik.http.services.preptrack.loadbalancer.server.port=3001"
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-preptrack}
+      POSTGRES_USER: ${POSTGRES_USER:-preptrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-preptrack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
