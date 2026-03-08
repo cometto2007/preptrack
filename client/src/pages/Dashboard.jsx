@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, RefreshCw } from 'lucide-react';
 import { useMeals } from '../hooks/useMeals';
 import { mealsApi } from '../services/api';
 import MealCard from '../components/shared/MealCard';
@@ -23,23 +23,23 @@ function SkeletonCard() {
 }
 
 export default function Dashboard() {
-  const { meals, loading, reload } = useMeals();
+  const { meals, loading, error, reload } = useMeals();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [counterMeal, setCounterMeal] = useState(null); // meal being decremented
+  const [counterMeal, setCounterMeal] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   const stats = useMemo(() => {
     const total = meals.reduce((s, m) => s + m.total_portions, 0);
+    // "Expiring Soon" = amber only (0–14 days). "Expired" = red. Both require portions > 0.
     const expiringSoon = meals.filter(m => {
       if (!m.earliest_expiry || m.total_portions === 0) return false;
-      const info = getExpiryInfo(m.earliest_expiry);
-      return info?.color === 'amber';
+      return getExpiryInfo(m.earliest_expiry)?.color === 'amber';
     }).length;
     const expired = meals.filter(m => {
       if (!m.earliest_expiry || m.total_portions === 0) return false;
-      const info = getExpiryInfo(m.earliest_expiry);
-      return info?.color === 'red';
+      return getExpiryInfo(m.earliest_expiry)?.color === 'red';
     }).length;
     return { total, expiringSoon, expired };
   }, [meals]);
@@ -50,11 +50,11 @@ export default function Dashboard() {
       const q = search.toLowerCase();
       list = list.filter(m => m.name.toLowerCase().includes(q));
     }
+    // "Expiring Soon" filter matches the stat: amber items only (0–14 days, > 0 portions)
     if (activeFilter === 'Expiring Soon') {
       list = list.filter(m => {
-        if (!m.earliest_expiry) return false;
-        const info = getExpiryInfo(m.earliest_expiry);
-        return info?.color === 'amber' || info?.color === 'red';
+        if (!m.earliest_expiry || m.total_portions === 0) return false;
+        return getExpiryInfo(m.earliest_expiry)?.color === 'amber';
       });
     } else if (activeFilter !== 'All') {
       list = list.filter(m => m.category === activeFilter);
@@ -64,13 +64,15 @@ export default function Dashboard() {
 
   async function handleRemove(count) {
     if (!counterMeal) return;
+    setActionError(null);
     try {
       await mealsApi.decrement(counterMeal.id, { quantity: count, source: 'manual' });
       await reload();
+      setCounterMeal(null);
     } catch (e) {
-      console.error(e);
+      setActionError(e.message);
+      // Keep the sheet open so the user sees the error and can retry or cancel
     }
-    setCounterMeal(null);
   }
 
   return (
@@ -84,6 +86,16 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold tracking-tight">PrepTrack</h1>
         </div>
       </header>
+
+      {/* Fetch error banner */}
+      {error && !loading && (
+        <div className="mx-4 mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between gap-3">
+          <p className="text-red-400 text-sm">Failed to load inventory: {error}</p>
+          <button onClick={reload} className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
+            <RefreshCw size={16} />
+          </button>
+        </div>
+      )}
 
       <main className="flex-1 pb-4">
         {/* Stats strip */}
@@ -126,11 +138,7 @@ export default function Dashboard() {
         {/* Meal list */}
         <section className="px-4 space-y-3">
           {loading ? (
-            <>
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </>
+            <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
           ) : filtered.length === 0 ? (
             <EmptyState search={search} filter={activeFilter} onAdd={() => navigate('/add')} />
           ) : (
@@ -138,7 +146,7 @@ export default function Dashboard() {
               <MealCard
                 key={meal.id}
                 meal={meal}
-                onMinus={m => setCounterMeal(m)}
+                onMinus={m => { setActionError(null); setCounterMeal(m); }}
               />
             ))
           )}
@@ -161,8 +169,15 @@ export default function Dashboard() {
           initialCount={1}
           maxCount={counterMeal.total_portions}
           onConfirm={handleRemove}
-          onClose={() => setCounterMeal(null)}
+          onClose={() => { setCounterMeal(null); setActionError(null); }}
         />
+      )}
+
+      {/* Action error toast (shown below the sheet) */}
+      {actionError && (
+        <div className="fixed bottom-4 left-4 right-4 z-[60] p-3 bg-red-500/90 rounded-xl text-white text-sm text-center">
+          {actionError}
+        </div>
       )}
     </div>
   );
@@ -182,24 +197,17 @@ function EmptyState({ search, filter, onAdd }) {
   const isFiltered = search || filter !== 'All';
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">
-        🧊
-      </div>
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">🧊</div>
       <div>
         <h2 className="text-lg font-semibold mb-1">
           {isFiltered ? 'No matches found' : 'Freezer is empty'}
         </h2>
         <p className="text-slate-400 text-sm">
-          {isFiltered
-            ? 'Try a different search or filter'
-            : 'Add your first frozen meal to get started'}
+          {isFiltered ? 'Try a different search or filter' : 'Add your first frozen meal to get started'}
         </p>
       </div>
       {!isFiltered && (
-        <button
-          onClick={onAdd}
-          className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm"
-        >
+        <button onClick={onAdd} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
           Add First Meal
         </button>
       )}

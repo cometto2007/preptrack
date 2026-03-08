@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Minus } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import { formatDateShort } from '../../utils/dates';
 
-const CATEGORY_COLORS = {
+export const CATEGORY_COLORS = {
   'Meals':       'bg-primary/10 text-primary',
   'Soups':       'bg-teal-500/10 text-teal-400',
   'Sauces':      'bg-orange-500/10 text-orange-400',
@@ -13,25 +15,30 @@ const CATEGORY_COLORS = {
 
 function CategoryAvatar({ category }) {
   const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS['Other'];
-  const initial = category.charAt(0).toUpperCase();
   return (
     <div className={`size-16 rounded-xl flex items-center justify-center text-2xl font-black flex-shrink-0 ${colors}`}>
-      {initial}
+      {category.charAt(0)}
     </div>
   );
 }
 
-function formatFreezeDate(dateStr) {
-  if (!dateStr) return null;
-  return new Date(dateStr).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-}
-
 export default function MealCard({ meal, onMinus }) {
-  const freezeDate = meal.earliest_expiry
-    ? formatFreezeDate(
-        // Use batch freeze date if available — fall back to created_at
-        meal.freeze_date || meal.created_at
-      )
+  const [busy, setBusy] = useState(false);
+
+  async function handleMinus(e) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onMinus(meal);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // API returns earliest_freeze_date from MIN(b.freeze_date)
+  const frozenLabel = meal.earliest_freeze_date
+    ? `Frozen ${formatDateShort(meal.earliest_freeze_date)}`
     : null;
 
   return (
@@ -52,8 +59,8 @@ export default function MealCard({ meal, onMinus }) {
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight ${CATEGORY_COLORS[meal.category] || ''}`}>
             {meal.category}
           </span>
-          {freezeDate && (
-            <span className="text-[10px] text-slate-500">Frozen {freezeDate}</span>
+          {frozenLabel && (
+            <span className="text-[10px] text-slate-500">{frozenLabel}</span>
           )}
         </div>
       </Link>
@@ -62,9 +69,10 @@ export default function MealCard({ meal, onMinus }) {
       <div className="flex flex-col items-center gap-1 bg-slate-800/50 p-1.5 rounded-lg border border-slate-800 flex-shrink-0">
         <span className="text-lg font-black leading-none">{meal.total_portions}</span>
         <button
-          onClick={(e) => { e.preventDefault(); onMinus(meal); }}
-          className="size-6 bg-primary/20 text-primary rounded-md flex items-center justify-center hover:bg-primary/30 active:scale-95 transition-all"
-          title="Remove 1 portion"
+          onClick={handleMinus}
+          disabled={busy || meal.total_portions === 0}
+          className="size-6 bg-primary/20 text-primary rounded-md flex items-center justify-center hover:bg-primary/30 active:scale-95 transition-all disabled:opacity-30"
+          title="Remove portions"
         >
           <Minus size={14} />
         </button>

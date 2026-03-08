@@ -1,20 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Minus, Plus } from 'lucide-react';
+import { formatDate } from '../../utils/dates';
 
-// Bottom sheet overlay for specifying portion count
+// Bottom sheet overlay for specifying portion count.
 // mode: 'add' | 'remove'
-export default function QuickCounter({ meal, mode = 'add', initialCount = 2, maxCount, onConfirm, onClose }) {
+// expiryDate: pre-calculated YYYY-MM-DD string (required for add mode to show expiry label)
+export default function QuickCounter({ meal, mode = 'add', initialCount = 2, maxCount, expiryDate, onConfirm, onClose }) {
   const [count, setCount] = useState(initialCount);
 
-  // Reset when meal changes
   useEffect(() => { setCount(initialCount); }, [initialCount]);
-
-  const expiryLabel = (() => {
-    if (mode !== 'add') return null;
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() + 90);
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-  })();
 
   const canDecrease = count > 0;
   const canIncrease = maxCount == null || count < maxCount;
@@ -22,10 +16,7 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={onClose} />
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
@@ -67,15 +58,17 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
             </button>
           </div>
 
-          {/* Date info (add mode only) */}
+          {/* Date info — only shown in add mode when expiryDate is provided */}
           {mode === 'add' && (
             <div className="px-6 py-4 flex flex-col gap-1 items-center bg-slate-800/30">
               <p className="text-slate-400 text-sm">
                 Freeze date: <strong className="text-slate-200">Today</strong>
               </p>
-              <p className="text-slate-500 text-xs">
-                Expires: <strong className="text-slate-400">{expiryLabel}</strong> (~3 months)
-              </p>
+              {expiryDate && (
+                <p className="text-slate-500 text-xs">
+                  Expires: <strong className="text-slate-400">{formatDate(expiryDate)}</strong>
+                </p>
+              )}
             </div>
           )}
 
@@ -86,7 +79,9 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
               disabled={count === 0}
               className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all disabled:opacity-40"
             >
-              {mode === 'add' ? 'Confirm Freezing' : `Remove ${count} Portion${count !== 1 ? 's' : ''}`}
+              {mode === 'add'
+                ? 'Confirm Freezing'
+                : `Remove ${count} Portion${count !== 1 ? 's' : ''}`}
             </button>
             <button
               onClick={onClose}

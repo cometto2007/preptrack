@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, CheckCircle, AlertCircle, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useMeal } from '../hooks/useMeals';
-import { mealsApi } from '../services/api';
+import { mealsApi, settingsApi } from '../services/api';
 import QuickCounter from '../components/shared/QuickCounter';
+import { formatDate } from '../utils/dates';
+import { calcExpiry } from '../utils/expiry';
 
 function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr)) / 86400000);
@@ -11,10 +13,6 @@ function daysSince(dateStr) {
 
 function daysUntil(dateStr) {
   return Math.floor((new Date(dateStr) - Date.now()) / 86400000);
-}
-
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function ActivityIcon({ action }) {
@@ -79,6 +77,7 @@ export default function ItemDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState error={error} onBack={() => navigate(-1)} />;
@@ -87,8 +86,13 @@ export default function ItemDetail() {
   const { meal, batches, activity } = data;
   const activeBatches = batches.filter(b => b.portions_remaining > 0);
   const totalPortions = activeBatches.reduce((s, b) => s + b.portions_remaining, 0);
-  const earliestBatch = activeBatches.sort((a, b) => new Date(a.freeze_date) - new Date(b.freeze_date))[0];
-  const latestBatch = activeBatches.sort((a, b) => new Date(b.freeze_date) - new Date(a.freeze_date))[0];
+  // Copy before sorting to avoid mutating the same array twice
+  const sortedAsc  = [...activeBatches].sort((a, b) => new Date(a.freeze_date) - new Date(b.freeze_date));
+  const sortedDesc = [...activeBatches].sort((a, b) => new Date(b.freeze_date) - new Date(a.freeze_date));
+  const earliestBatch = sortedAsc[0];
+  const latestBatch   = sortedDesc[0];
+  // Pre-calculate expiry date for the QuickCounter add flow
+  const addExpiryDate = calcExpiry(meal.category, new Date().toISOString().split('T')[0]);
 
   const frozenDays = latestBatch ? daysSince(latestBatch.freeze_date) : null;
   const expiresInDays = earliestBatch ? daysUntil(earliestBatch.expiry_date) : null;
@@ -97,27 +101,32 @@ export default function ItemDetail() {
 
   async function handleAdjust(count) {
     setActionLoading(true);
+    setActionError(null);
     try {
       if (counterMode === 'add') {
-        await mealsApi.increment(id, { portions: count });
+        await mealsApi.increment(id, { portions: count, expiry_date: addExpiryDate });
       } else {
         await mealsApi.decrement(id, { quantity: count, source: 'manual' });
       }
       await reload();
+      setCounterMode(null);
     } catch (e) {
-      console.error(e);
+      setActionError(e.message);
+      // Keep sheet open on error so user can retry or cancel
+    } finally {
+      setActionLoading(false);
     }
-    setCounterMode(null);
-    setActionLoading(false);
   }
 
   async function handleDelete() {
     setActionLoading(true);
+    setActionError(null);
     try {
       await mealsApi.remove(id);
       navigate('/');
     } catch (e) {
-      console.error(e);
+      setActionError(e.message);
+      setShowDeleteConfirm(false);
       setActionLoading(false);
     }
   }
@@ -219,15 +228,7 @@ export default function ItemDetail() {
 
         {/* Mealie recipe link */}
         {meal.mealie_recipe_slug && (
-          <div className="flex items-center justify-between p-4 bg-slate-800/40 border border-slate-800 rounded-xl">
-            <div>
-              <p className="font-bold text-sm">{meal.name} Recipe</p>
-              <p className="text-xs text-slate-400">Linked via Mealie</p>
-            </div>
-            <button className="px-4 py-2 border border-primary/50 text-primary rounded-lg text-sm font-semibold hover:bg-primary/10 transition-colors flex items-center gap-1">
-              View <ExternalLink size={12} />
-            </button>
-          </div>
+          <MealieLink slug={meal.mealie_recipe_slug} name={meal.name} />
         )}
 
         {/* Activity log */}
@@ -276,9 +277,17 @@ export default function ItemDetail() {
           mode={counterMode}
           initialCount={counterMode === 'add' ? 2 : 1}
           maxCount={counterMode === 'remove' ? totalPortions : undefined}
+          expiryDate={counterMode === 'add' ? addExpiryDate : undefined}
           onConfirm={handleAdjust}
           onClose={() => setCounterMode(null)}
         />
+      )}
+
+      {/* Action error toast */}
+      {actionError && (
+        <div className="fixed bottom-4 left-4 right-4 z-[60] p-3 bg-red-500/90 rounded-xl text-white text-sm text-center">
+          {actionError}
+        </div>
       )}
 
       {/* Delete confirmation */}
@@ -311,6 +320,33 @@ export default function ItemDetail() {
         </>
       )}
     </div>
+  );
+}
+
+function MealieLink({ slug, name }) {
+  const [mealieUrl, setMealieUrl] = useState(null);
+
+  useEffect(() => {
+    settingsApi.get().then(s => {
+      if (s?.mealie_url) setMealieUrl(s.mealie_url.replace(/\/$/, ''));
+    }).catch(() => {});
+  }, []);
+
+  if (!mealieUrl) return null;
+
+  return (
+    <a
+      href={`${mealieUrl}/recipe/${slug}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 p-4 bg-slate-800/30 rounded-xl border border-slate-800 hover:border-primary/40 transition-colors"
+    >
+      <ExternalLink size={18} className="text-primary flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate">{name}</p>
+        <p className="text-xs text-slate-500">View recipe in Mealie</p>
+      </div>
+    </a>
   );
 }
 

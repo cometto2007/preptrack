@@ -3,24 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, ChevronDown, ChevronUp, Snowflake } from 'lucide-react';
 import { mealsApi } from '../services/api';
 import { useMeals } from '../hooks/useMeals';
+import { localDateStr } from '../utils/dates';
+import { EXPIRY_DAYS, calcExpiry } from '../utils/expiry';
 
-const CATEGORIES = ['Meals', 'Soups', 'Sauces', 'Baked Goods', 'Ingredients', 'Other'];
-
-const EXPIRY_DAYS = {
-  'Meals': 90, 'Soups': 180, 'Sauces': 180,
-  'Baked Goods': 90, 'Ingredients': 180, 'Other': 90,
-};
-
-function todayStr() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function calcExpiry(category, freezeDate) {
-  const days = EXPIRY_DAYS[category] || 90;
-  const d = new Date(freezeDate || todayStr());
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().split('T')[0];
-}
+const CATEGORIES = Object.keys(EXPIRY_DAYS);
 
 export default function AddItem() {
   const navigate = useNavigate();
@@ -33,8 +19,8 @@ export default function AddItem() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [portions, setPortions] = useState(2);
   const [category, setCategory] = useState('Meals');
-  const [freezeDate, setFreezeDate] = useState(todayStr());
-  const [expiryDate, setExpiryDate] = useState(calcExpiry('Meals', todayStr()));
+  const [freezeDate, setFreezeDate] = useState(localDateStr());
+  const [expiryDate, setExpiryDate] = useState(calcExpiry('Meals', localDateStr()));
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +38,7 @@ export default function AddItem() {
     }).catch(() => {});
   }, [editId]);
 
-  // Update expiry when category or freeze date changes
+  // Recalculate expiry whenever category or freeze date changes
   useEffect(() => {
     setExpiryDate(calcExpiry(category, freezeDate));
   }, [category, freezeDate]);
@@ -77,26 +63,25 @@ export default function AddItem() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!name.trim()) { setError('Meal name is required'); return; }
+    const trimmedName = name.trim();
+    if (!trimmedName) { setError('Meal name is required'); return; }
     setSubmitting(true);
     setError(null);
     try {
-      let mealId = editId;
       if (editId) {
-        await mealsApi.update(editId, { name: name.trim(), category, notes: notes || null });
+        await mealsApi.update(editId, { name: trimmedName, category, notes: notes || null });
       } else {
-        // Create meal if it doesn't exist, then add batch
-        const existing = meals.find(m => m.name.toLowerCase() === name.trim().toLowerCase());
-        if (existing) {
-          mealId = existing.id;
-        } else {
-          const { meal } = await mealsApi.create({ name: name.trim(), category, notes: notes || null });
-          mealId = meal.id;
-        }
-      }
-      // Add batch (not when editing — edit only updates meal metadata)
-      if (!editId) {
-        await mealsApi.increment(mealId, { portions, freeze_date: freezeDate, expiry_date: expiryDate });
+        // Find existing meal by exact name (case-insensitive)
+        const existing = meals.find(m => m.name.toLowerCase() === trimmedName.toLowerCase());
+        const mealId = existing
+          ? existing.id
+          : (await mealsApi.create({ name: trimmedName, category, notes: notes || null })).meal.id;
+
+        await mealsApi.increment(mealId, {
+          portions,
+          freeze_date: freezeDate,
+          expiry_date: expiryDate,
+        });
       }
       navigate('/');
     } catch (e) {
@@ -112,10 +97,7 @@ export default function AddItem() {
     <div className="flex flex-col min-h-full">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-bg-app/80 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-slate-800">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-full hover:bg-slate-800 transition-colors"
-        >
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold">{isEdit ? 'Edit Meal' : 'Add to Freezer'}</h1>
@@ -125,9 +107,7 @@ export default function AddItem() {
         <div className="flex flex-col gap-6 p-4 pb-28">
           {/* Meal name */}
           <section className="flex flex-col gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Meal Name
-            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Meal Name</label>
             <div className="relative">
               <div className="flex w-full items-stretch rounded-xl bg-slate-800/50 border border-slate-700 focus-within:border-primary transition-colors">
                 <input
@@ -141,7 +121,6 @@ export default function AddItem() {
                   required
                 />
               </div>
-              {/* Autocomplete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-bg-surface border border-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
                   {suggestions.map(m => (
@@ -160,7 +139,7 @@ export default function AddItem() {
             </div>
           </section>
 
-          {/* Portions (hidden for edit mode since we're just updating metadata) */}
+          {/* Portions — hidden for edit mode */}
           {!isEdit && (
             <section className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700">
               <div className="flex items-center gap-3">
@@ -191,9 +170,7 @@ export default function AddItem() {
 
           {/* Category */}
           <section className="flex flex-col gap-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Category
-            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
             <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-1">
               {CATEGORIES.map(cat => (
                 <button
@@ -212,13 +189,11 @@ export default function AddItem() {
             </div>
           </section>
 
-          {/* Dates (hidden for edit mode) */}
+          {/* Dates — hidden for edit mode */}
           {!isEdit && (
             <section className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Freeze Date
-                </label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Freeze Date</label>
                 <input
                   type="date"
                   value={freezeDate}
@@ -227,9 +202,7 @@ export default function AddItem() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Expiry Date
-                </label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Expiry Date</label>
                 <input
                   type="date"
                   value={expiryDate}
@@ -261,9 +234,7 @@ export default function AddItem() {
             )}
           </section>
 
-          {error && (
-            <p className="text-red-400 text-sm">{error}</p>
-          )}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
         </div>
 
         {/* Sticky submit */}

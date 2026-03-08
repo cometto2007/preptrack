@@ -1,11 +1,11 @@
 export function getExpiryInfo(earliestExpiry) {
   if (!earliestExpiry) return null;
   const daysLeft = Math.floor((new Date(earliestExpiry) - new Date()) / 86400000);
-  if (daysLeft < 0)  return { label: 'Expired',        color: 'red' };
-  if (daysLeft === 0) return { label: 'Exp Today',      color: 'red' };
-  if (daysLeft <= 14) return { label: `Exp ${daysLeft}d`, color: 'amber' };
+  if (daysLeft < 0)   return { label: 'Expired',          color: 'red' };
+  if (daysLeft === 0) return { label: 'Exp Today',         color: 'red' };
+  if (daysLeft <= 14) return { label: `Exp ${daysLeft}d`,  color: 'amber' };
   if (daysLeft <= 60) return { label: `${daysLeft}d left`, color: 'green' };
-  return { label: `${Math.round(daysLeft / 30)}mo left`, color: 'green' };
+  return { label: `${Math.round(daysLeft / 30)}mo left`,   color: 'green' };
 }
 
 const colorMap = {
@@ -15,9 +15,11 @@ const colorMap = {
 };
 
 export default function StatusBadge({ earliestExpiry, totalPortions }) {
-  if (!earliestExpiry || totalPortions === 0) return null;
+  if (!earliestExpiry) return null;
   const info = getExpiryInfo(earliestExpiry);
   if (!info) return null;
+  // Show badge even at 0 portions when expired — prompts the user to clear out
+  if (totalPortions === 0 && info.color !== 'red') return null;
   return (
     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${colorMap[info.color]}`}>
       {info.label}
