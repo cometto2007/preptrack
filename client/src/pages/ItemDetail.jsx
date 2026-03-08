@@ -6,8 +6,7 @@ import { useSettings } from '../hooks/useSettings';
 import { mealsApi, settingsApi } from '../services/api';
 import QuickCounter from '../components/shared/QuickCounter';
 import { formatDate } from '../utils/dates';
-import { buildExpiryMap, calcExpiry } from '../utils/expiry';
-import { localDateStr } from '../utils/dates';
+import { buildExpiryMap } from '../utils/expiry';
 
 function parseLocalDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -100,20 +99,17 @@ export default function ItemDetail() {
   const sortedDesc = [...activeBatches].sort((a, b) => new Date(b.freeze_date) - new Date(a.freeze_date));
   const earliestBatch = sortedAsc[0];
   const latestBatch   = sortedDesc[0];
-  // Pre-calculate expiry date for the QuickCounter add flow using live settings
-  const addExpiryDate = calcExpiry(meal.category, localDateStr(), expiryDays);
-
   const frozenDays = latestBatch ? daysSince(latestBatch.freeze_date) : null;
   const expiresInDays = earliestBatch ? daysUntil(earliestBatch.expiry_date) : null;
   const isExpired = expiresInDays !== null && expiresInDays < 0;
   const isExpiringSoon = expiresInDays !== null && expiresInDays >= 0 && expiresInDays <= 14;
 
-  async function handleAdjust(count) {
+  async function handleAdjust(count, freezeDate, expiryDate) {
     setActionLoading(true);
     setActionError(null);
     try {
       if (counterMode === 'add') {
-        await mealsApi.increment(id, { portions: count, expiry_date: addExpiryDate });
+        await mealsApi.increment(id, { portions: count, freeze_date: freezeDate, expiry_date: expiryDate });
       } else {
         await mealsApi.decrement(id, { quantity: count, source: 'manual' });
       }
@@ -286,7 +282,8 @@ export default function ItemDetail() {
           mode={counterMode}
           initialCount={counterMode === 'add' ? 2 : 1}
           maxCount={counterMode === 'remove' ? totalPortions : undefined}
-          expiryDate={counterMode === 'add' ? addExpiryDate : undefined}
+          category={meal.category}
+          expiryDays={expiryDays}
           onConfirm={handleAdjust}
           onClose={() => setCounterMode(null)}
         />

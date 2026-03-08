@@ -1,17 +1,44 @@
 import { useState, useEffect } from 'react';
 import { Minus, Plus } from 'lucide-react';
-import { formatDate } from '../../utils/dates';
+import { localDateStr, formatDate } from '../../utils/dates';
+import { calcExpiry, EXPIRY_DAYS } from '../../utils/expiry';
 
 // Bottom sheet overlay for specifying portion count.
 // mode: 'add' | 'remove'
-// expiryDate: pre-calculated YYYY-MM-DD string (required for add mode to show expiry label)
-export default function QuickCounter({ meal, mode = 'add', initialCount = 2, maxCount, expiryDate, onConfirm, onClose }) {
+// add mode: pass category + expiryDays so the sheet can own freeze/expiry date state.
+//   onConfirm(count, freezeDate, expiryDate) — callers must accept all three args.
+// remove mode: onConfirm(count)
+export default function QuickCounter({
+  meal,
+  mode = 'add',
+  initialCount = 2,
+  maxCount,
+  category,
+  expiryDays = EXPIRY_DAYS,
+  onConfirm,
+  onClose,
+}) {
   const [count, setCount] = useState(initialCount);
+  const [freezeDate, setFreezeDate] = useState(localDateStr());
 
   useEffect(() => { setCount(initialCount); }, [initialCount]);
 
+  // Derive expiry from the live freeze date + category + settings
+  const effectiveCategory = category ?? meal?.category;
+  const expiryDate = (mode === 'add' && effectiveCategory)
+    ? calcExpiry(effectiveCategory, freezeDate, expiryDays)
+    : null;
+
   const canDecrease = count > 0;
   const canIncrease = maxCount == null || count < maxCount;
+
+  function handleConfirm() {
+    if (mode === 'add') {
+      onConfirm(count, freezeDate, expiryDate);
+    } else {
+      onConfirm(count);
+    }
+  }
 
   return (
     <>
@@ -58,12 +85,18 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
             </button>
           </div>
 
-          {/* Date info — only shown in add mode when expiryDate is provided */}
+          {/* Date info — add mode only; freeze date is tappable */}
           {mode === 'add' && (
-            <div className="px-6 py-4 flex flex-col gap-1 items-center bg-slate-800/30">
-              <p className="text-slate-400 text-sm">
-                Freeze date: <strong className="text-slate-200">Today</strong>
-              </p>
+            <div className="px-6 py-4 flex flex-col gap-2 items-center bg-slate-800/30">
+              <label className="flex items-center gap-2 text-slate-400 text-sm cursor-pointer">
+                <span>Freeze date:</span>
+                <input
+                  type="date"
+                  value={freezeDate}
+                  onChange={e => setFreezeDate(e.target.value)}
+                  className="bg-transparent border-b border-slate-600 text-slate-200 font-semibold focus:outline-none focus:border-primary"
+                />
+              </label>
               {expiryDate && (
                 <p className="text-slate-500 text-xs">
                   Expires: <strong className="text-slate-400">{formatDate(expiryDate)}</strong>
@@ -75,7 +108,7 @@ export default function QuickCounter({ meal, mode = 'add', initialCount = 2, max
           {/* Actions */}
           <div className="p-6 pt-4 flex flex-col gap-3 safe-bottom">
             <button
-              onClick={() => onConfirm(count)}
+              onClick={handleConfirm}
               disabled={count === 0}
               className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all disabled:opacity-40"
             >
