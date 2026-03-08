@@ -1,16 +1,15 @@
 services:
   app:
-    build: .
+    image: ghcr.io/cometto2007/preptrack:latest
     ports:
       - "${PORT:-3001}:3001"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-preptrack}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-preptrack}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://preptrack.yourdomain.com}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
-      MEALIE_URL: ${MEALIE_URL:-}
-      MEALIE_API_KEY: ${MEALIE_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     depends_on:
@@ -18,7 +17,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     labels:
-      # Traefik labels — update domain as needed
+      # Traefik labels — update domain to match your setup
       - "traefik.enable=true"
       - "traefik.http.routers.preptrack.rule=Host(`preptrack.yourdomain.com`)"
       - "traefik.http.routers.preptrack.entrypoints=websecure"

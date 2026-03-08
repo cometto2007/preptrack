@@ -1,5 +1,32 @@
 # PrepTrack — Build Plan
 
+## Current Status — March 2026
+
+**All phases complete.** The app is fully built and functional. This document is kept for architectural reference.
+
+### What's done
+- ✅ Phase 1 — Foundation (scaffold, DB, app shell, PWA stub)
+- ✅ Phase 2 — Core CRUD (meals/batches API, Dashboard, Add Item, Item Detail, Quick Counter)
+- ✅ Phase 3 — Mealie Integration (API service, Plan/Coverage screen, recipe autocomplete, recipe image proxy)
+- ✅ Phase 3.1 — Category Sync Update (Mealie-sourced categories, dynamic filters, migration 004)
+- ✅ Phase 4 — Notifications (cron scheduler, Web Push, lunch/dinner prompt UI, Telegram optional)
+- ✅ Phase 5 — Polish (Settings screen, TickTick OAuth + checklist integration, PWA finalisation, Docker)
+
+### Completed integrations
+- **Mealie API v2:** `/households/mealplans` endpoint, camelCase field support (`entryType`, `recipeCategory`), recipe image proxy, category sync
+- **TickTick OAuth 2.0:** In-app popup flow using `X-Forwarded-Host` header (Vite `xfwd: true`), ingredients sent as `items[]` checklist array
+- **Web Push:** VAPID via env vars, `vapidConfigured` flag, SSRF protection on subscribe endpoint
+- **PWA:** Cache versioning (`v1`), offline inventory, install banner with localStorage dismiss, SW skips navigate-mode requests (fixes OAuth popup)
+
+### Key architectural decisions made during build
+- Categories are NOT hardcoded — they come from `mealie_category_name` on the `meals` table, synced from Mealie's `recipeCategory[0]`
+- Single `default_expiry_days` setting (was per-category, simplified in Phase 3.1)
+- Mealie API responses cached 5 min in-memory on the server
+- TickTick redirect URI uses `X-Forwarded-Host` header set by Vite proxy (`xfwd: true`) so dev and prod both work
+- Service worker skips `request.mode === 'navigate'` for `/api/` paths to avoid intercepting OAuth redirects
+
+---
+
 ## Project Overview
 
 PrepTrack is a PWA meal prep management app that integrates with Mealie for recipe/meal plan data. It tracks freezer inventory, sends smart notifications about defrosting and freezing, and helps plan weekly meals. Built as a Node.js/Express app with PostgreSQL, deployed on Unraid behind Traefik/Authelia.
@@ -39,17 +66,28 @@ PrepTrack is a PWA meal prep management app that integrates with Mealie for reci
 
 ```sql
 -- Core tables
-meals           -- One row per unique meal name (id, name, category, mealie_recipe_slug, image_url, notes, created_at)
-batches         -- One row per freeze event (id, meal_id, portions_remaining, freeze_date, expiry_date, created_at)
-activity_log    -- Every add/remove event (id, meal_id, batch_id, action, quantity, source, note, created_at)
-reservations    -- Pending prompt confirmations (id, meal_id, batch_id, meal_plan_date, meal_type, status, created_at, resolved_at)
+meals           -- id, name, mealie_recipe_slug, mealie_category_name, mealie_category_slug, image_url, notes, created_at
+                -- NOTE: no 'category' column — categories come from Mealie, stored as text
+batches         -- id, meal_id, portions_remaining, freeze_date, expiry_date, created_at
+activity_log    -- id, meal_id, batch_id, action, quantity, source, note, created_at
+reservations    -- id, meal_id, batch_id, meal_plan_date, meal_type, status, created_at, resolved_at
 
 -- Config tables
-settings        -- Key-value app settings (notification times, sync frequency, etc.)
-schedule        -- Weekly default schedule (day_of_week, lunch_enabled, dinner_enabled)
-schedule_overrides -- Per-week overrides (week_start, day_of_week, meal_type, override_type)
-push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, created_at)
+settings        -- key-value store. Active keys:
+                --   mealie_url, mealie_api_key
+                --   ticktick_client_id, ticktick_client_secret, ticktick_access_token, ticktick_list_id
+                --   default_expiry_days (single value, replaces per-category expiry)
+                --   defrost_lead_time, lunch_prompt_time, dinner_prompt_time
+schedule        -- day_of_week, lunch_enabled, dinner_enabled
+schedule_overrides -- week_start, day_of_week, meal_type, override_type
+push_subscriptions -- id, endpoint, keys_p256dh, keys_auth, created_at
 ```
+
+### Migrations
+- `001_initial_schema.sql` — all core tables
+- `002_activity_source_batch_delete.sql` — activity log source/delete tracking
+- `003_activity_source_notification_actions.sql` — notification action sources
+- `004_mealie_categories_and_default_expiry.sql` — adds `mealie_category_name/slug` to meals, drops `category` column + CHECK constraint, adds `default_expiry_days` setting, removes per-category expiry settings
 
 ## Screen Inventory (from Stitch mockups)
 
@@ -68,7 +106,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 - **Branding:** "PrepTrack" everywhere, subtitle "Meal Prep Manager"
 - **Navigation (mobile):** Bottom tab bar — Home, Plan, Recipes, Settings
 - **Navigation (desktop):** Left sidebar — Dashboard, Plan, Inventory, Add Item, Settings
-- **Categories:** Meals, Soups, Sauces, Baked Goods, Ingredients, Other (NOT Lunch/Dinner)
+- **Categories:** Dynamically sourced from Mealie (`recipeCategory[0].name`), stored on the `meals` table as `mealie_category_name`. `Uncategorised` bucket for meals with no Mealie category. No hardcoded list.
 - **Portions default:** 2 (household of 2)
 - **Batch model:** One entry per meal name, multiple batches underneath, FIFO for removals
 - **Defrost default:** "Defrost 2" as primary prompt action
@@ -81,7 +119,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 
 ## Build Phases
 
-### PHASE 1 — Foundation (Opus plans, Sonnet builds)
+### PHASE 1 — Foundation ✅ COMPLETE
 **Goal:** Runnable app skeleton with database, API structure, and app shell.
 
 **Task 1.1 — Project scaffolding** → Sonnet
@@ -107,7 +145,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 
 ---
 
-### PHASE 2 — Core CRUD (Sonnet builds, Haiku for repetitive parts)
+### PHASE 2 — Core CRUD ✅ COMPLETE
 
 **Goal:** Freezer inventory management works end-to-end.
 
@@ -153,7 +191,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 
 ---
 
-### PHASE 3 — Mealie Integration (Sonnet builds)
+### PHASE 3 — Mealie Integration ✅ COMPLETE
 
 **Goal:** PrepTrack pulls recipes and meal plans from Mealie.
 
@@ -183,7 +221,13 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 
 ---
 
-### PHASE 4 — Notification System (Opus designs logic, Sonnet builds)
+### PHASE 3.1 — Category Sync Update ✅ COMPLETE
+
+Removed hardcoded 6-category system. Meals now inherit `mealie_category_name` and `mealie_category_slug` from Mealie's `recipeCategory[0]`. Dynamic `/api/categories` endpoint counts stocked meals per category. Dashboard filter chips built from API response. Single `default_expiry_days` setting replaces per-category expiry config.
+
+---
+
+### PHASE 4 — Notification System ✅ COMPLETE
 
 **Goal:** Smart prompts drive daily interaction.
 
@@ -218,7 +262,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 
 ---
 
-### PHASE 5 — Settings & Polish (Sonnet + Haiku)
+### PHASE 5 — Settings & Polish ✅ COMPLETE
 
 **Goal:** App is configurable and deployment-ready.
 
@@ -273,7 +317,7 @@ push_subscriptions -- Web Push endpoints (id, endpoint, keys_p256dh, keys_auth, 
 6. **Use Opus sparingly** — only for planning, reviewing critical logic, and debugging hard problems. Don't use Opus for writing boilerplate.
 7. **Haiku for small, well-defined jobs** — give it clear inputs and expected outputs. Don't ask it to make design decisions.
 
-## File Structure
+## File Structure (as built)
 
 ```
 preptrack/
@@ -286,58 +330,63 @@ preptrack/
 │   ├── index.js              # Express app entry
 │   ├── db/
 │   │   ├── connection.js     # PostgreSQL pool
-│   │   └── migrations/       # SQL migration files
+│   │   └── migrations/       # 001–004 SQL migration files
 │   ├── routes/
-│   │   ├── meals.js
+│   │   ├── meals.js          # CRUD + increment/decrement, ?category= filter
 │   │   ├── batches.js
 │   │   ├── settings.js
-│   │   ├── notifications.js
-│   │   └── mealie.js
+│   │   ├── notifications.js  # Pending prompts, resolve, push subscribe/unsubscribe
+│   │   ├── mealie.js         # Recipe search, meal-plan, sync, image proxy, recipe/:slug
+│   │   ├── categories.js     # GET /api/categories — dynamic from meals table
+│   │   └── ticktick.js       # OAuth /auth + /callback, shopping-list task creation
 │   ├── services/
-│   │   ├── mealieSync.js     # Mealie API wrapper
-│   │   ├── scheduler.js      # Cron notification jobs
-│   │   ├── pushService.js    # Web Push sending
-│   │   ├── telegramBot.js    # Telegram integration
-│   │   └── ticktick.js       # TickTick API wrapper
+│   │   ├── mealieSync.js     # Mealie API wrapper + 5-min in-memory cache
+│   │   ├── scheduler.js      # Cron lunch + dinner notification jobs
+│   │   ├── pushService.js    # Web Push (vapidConfigured flag exported)
+│   │   ├── telegramBot.js    # Telegram integration (optional)
+│   │   └── ticktick.js       # TickTick API: createTask(token, listId, title, content, items[])
 │   └── middleware/
 │       └── auth.js           # Authelia header parsing
 │
 ├── client/
 │   ├── index.html
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── AppShell.jsx      # Responsive shell
-│   │   │   │   ├── BottomNav.jsx     # Mobile nav
-│   │   │   │   └── Sidebar.jsx       # Desktop nav
-│   │   │   ├── shared/
-│   │   │   │   ├── MealCard.jsx
-│   │   │   │   ├── QuickCounter.jsx  # Bottom sheet overlay
-│   │   │   │   ├── StatusBadge.jsx
-│   │   │   │   └── FilterChips.jsx
-│   │   │   └── prompts/
-│   │   │       ├── LunchPrompt.jsx
-│   │   │       └── DinnerPrompt.jsx
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── Plan.jsx
-│   │   │   ├── AddItem.jsx
-│   │   │   ├── ItemDetail.jsx
-│   │   │   └── Settings.jsx
-│   │   ├── hooks/
-│   │   │   ├── useMeals.js
-│   │   │   ├── useMealPlan.js
-│   │   │   └── useNotifications.js
-│   │   ├── services/
-│   │   │   └── api.js        # Frontend API client
-│   │   └── styles/
-│   │       └── tailwind.css
-│   └── public/
-│       ├── manifest.json
-│       ├── sw.js             # Service worker
-│       └── icons/
+│   ├── public/
+│   │   ├── manifest.json
+│   │   ├── sw.js             # Service worker (cache v1, offline, OAuth navigate fix)
+│   │   └── icons/
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── components/
+│       │   ├── layout/
+│       │   │   ├── AppShell.jsx      # Shell + PWA install banner (dismiss persisted)
+│       │   │   ├── BottomNav.jsx     # Mobile nav
+│       │   │   └── Sidebar.jsx       # Desktop nav
+│       │   ├── shared/
+│       │   │   ├── MealCard.jsx
+│       │   │   ├── QuickCounter.jsx  # Bottom sheet (add/remove modes, expiryDays as number)
+│       │   │   ├── StatusBadge.jsx
+│       │   │   └── FilterChips.jsx
+│       │   └── prompts/
+│       │       ├── LunchPrompt.jsx   # Defrost / Cooking Fresh / Skip
+│       │       └── DinnerPrompt.jsx  # Ate Fresh / Froze / Ate+Froze / Used Freezer
+│       ├── pages/
+│       │   ├── Dashboard.jsx  # Dynamic category chips, inventory, prompt cards
+│       │   ├── Plan.jsx       # Meal plan coverage with recipe photos
+│       │   ├── AddItem.jsx    # Mealie autocomplete, category badge from Mealie
+│       │   ├── ItemDetail.jsx
+│       │   └── Settings.jsx   # Schedule grid, Mealie, TickTick OAuth, Push, Freezer defaults
+│       ├── hooks/
+│       │   ├── useMeals.js
+│       │   ├── useMealPlan.js
+│       │   ├── useSettings.js
+│       │   ├── useInstallPrompt.js   # PWA install + localStorage dismiss
+│       │   └── useNotifications.js
+│       ├── services/
+│       │   └── api.js         # mealsApi, batchesApi, settingsApi, mealieApi, categoriesApi, ticktickApi, notificationsApi
+│       └── utils/
+│           ├── dates.js
+│           └── expiry.js      # buildExpiryMap(settings) → number, calcExpiry(date, days)
 │
 └── design/                   # Stitch mockups for reference
     ├── mobile/

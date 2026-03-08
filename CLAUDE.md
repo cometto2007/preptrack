@@ -25,51 +25,62 @@ preptrack/
 │   ├── index.js               # Express entry point
 │   ├── db/
 │   │   ├── connection.js      # PostgreSQL pool
-│   │   └── migrations/        # SQL migration files
+│   │   └── migrations/        # SQL migration files (001–004)
 │   ├── routes/
-│   │   ├── meals.js
+│   │   ├── meals.js           # CRUD + increment/decrement, ?category= filter
 │   │   ├── batches.js
 │   │   ├── settings.js
-│   │   ├── notifications.js
-│   │   └── mealie.js
+│   │   ├── notifications.js   # Pending prompts, resolve actions, push subscribe
+│   │   ├── mealie.js          # Recipe search, meal-plan, sync, image proxy
+│   │   ├── categories.js      # GET /api/categories — dynamic from meals table
+│   │   └── ticktick.js        # OAuth flow + shopping list task creation
 │   ├── services/
-│   │   ├── mealieSync.js      # Mealie API wrapper + cache
-│   │   ├── scheduler.js       # Cron notification jobs
-│   │   ├── pushService.js     # Web Push sending
-│   │   ├── telegramBot.js     # Telegram integration
-│   │   └── ticktick.js        # TickTick API wrapper
+│   │   ├── mealieSync.js      # Mealie API wrapper + 5-min in-memory cache
+│   │   ├── scheduler.js       # Cron notification jobs (lunch + dinner)
+│   │   ├── pushService.js     # Web Push sending, vapidConfigured flag
+│   │   ├── telegramBot.js     # Telegram integration (optional)
+│   │   └── ticktick.js        # TickTick API wrapper (createTask with items[])
 │   └── middleware/
 │       └── auth.js            # Authelia header parsing
 └── client/
     ├── index.html
+    ├── public/
+    │   ├── manifest.json
+    │   ├── sw.js              # Service worker (cache versioning, offline, OAuth nav fix)
+    │   └── icons/
     └── src/
         ├── App.jsx
         ├── main.jsx
         ├── components/
         │   ├── layout/
-        │   │   ├── AppShell.jsx      # Responsive shell
+        │   │   ├── AppShell.jsx      # Responsive shell + PWA install banner
         │   │   ├── BottomNav.jsx     # Mobile bottom tab bar
         │   │   └── Sidebar.jsx       # Desktop left sidebar
         │   ├── shared/
         │   │   ├── MealCard.jsx
-        │   │   ├── QuickCounter.jsx  # Bottom sheet overlay
+        │   │   ├── QuickCounter.jsx  # Bottom sheet overlay (add/remove modes)
         │   │   ├── StatusBadge.jsx
         │   │   └── FilterChips.jsx
         │   └── prompts/
-        │       ├── LunchPrompt.jsx
-        │       └── DinnerPrompt.jsx
+        │       ├── LunchPrompt.jsx   # Defrost / Cooking Fresh / Skip
+        │       └── DinnerPrompt.jsx  # Ate Fresh / Froze / Ate+Froze / Used Freezer
         ├── pages/
-        │   ├── Dashboard.jsx
-        │   ├── Plan.jsx
-        │   ├── AddItem.jsx
+        │   ├── Dashboard.jsx  # Dynamic category filters, inventory list, prompts
+        │   ├── Plan.jsx       # Meal plan coverage + recipe photos
+        │   ├── AddItem.jsx    # Mealie recipe autocomplete, category badge
         │   ├── ItemDetail.jsx
-        │   └── Settings.jsx
+        │   └── Settings.jsx   # Schedule, Mealie, TickTick, Push, Freezer defaults
         ├── hooks/
         │   ├── useMeals.js
         │   ├── useMealPlan.js
+        │   ├── useSettings.js
+        │   ├── useInstallPrompt.js   # PWA install prompt with localStorage dismiss
         │   └── useNotifications.js
-        └── services/
-            └── api.js           # Frontend API client
+        ├── services/
+        │   └── api.js         # Frontend API client (mealsApi, categoriesApi, ticktickApi, etc.)
+        └── utils/
+            ├── dates.js
+            └── expiry.js      # buildExpiryMap (returns number), calcExpiry(date, days)
 ```
 
 ## Database Schema
@@ -118,16 +129,35 @@ The `design/` directory contains Stitch-generated HTML mockups for all screens. 
 | Item Detail | `item_detail_history` |
 | Settings | `settings_updated_schedule_icons`, `settings_desktop_view_standardized` |
 
+## Current Status
+
+All phases complete as of March 2026. The app is fully functional and ready for Docker deployment.
+
+### What's built and working
+- Full freezer inventory CRUD with FIFO batch model
+- Mealie integration: recipe search/autocomplete, meal plan coverage screen with recipe photos
+- Dynamic categories sourced from Mealie (no hardcoded categories)
+- Web Push notifications: cron scheduler, lunch/dinner prompts, in-app prompt cards
+- TickTick OAuth 2.0 integration: sends recipe ingredients as checklist tasks
+- Settings screen: schedule grid, Mealie config, TickTick connect, push subscription, data export
+- PWA: service worker with cache versioning, offline inventory browsing, install banner
+- Authelia SSO middleware for production
+
+### Key integrations
+- **Mealie:** URL + API key stored in DB settings. Sync (`POST /api/mealie/sync`) links PrepTrack meals to Mealie recipes by name and pulls `mealie_category_name/slug`. Meal plan fetched from `/households/mealplans` (Mealie v2 endpoint). Recipe images proxied server-side.
+- **TickTick:** OAuth 2.0 via in-app popup flow. Ingredients sent as checklist `items[]` array (not plain text). Client ID/secret stored in DB settings.
+- **Web Push:** VAPID keys via env vars. `vapidConfigured` flag checks all 3 vars. Subscribe endpoint blocks private/loopback IPs (SSRF prevention).
+
 ## Build Phases
 
 Work one task at a time. Complete and test before moving on.
 
-- **Phase 1 — Foundation:** Scaffold (Vite+React+Tailwind+Express), DB migrations, app shell + nav, PWA stub
-- **Phase 2 — Core CRUD:** Meals/batches API, Dashboard, Add Item form, Item Detail, Quick Counter
-- **Phase 3 — Mealie Integration:** Mealie API service, Plan/Coverage screen, recipe autocomplete
-- **Phase 3.1 — Category Sync Update:** Remove hardcoded categories, store Mealie category name/slug on meals, dynamic category filters via `/api/categories`
-- **Phase 4 — Notifications:** Cron scheduler, Web Push, prompt UI, Telegram bot (optional)
-- **Phase 5 — Polish:** Settings screen, TickTick integration, PWA finalisation, Docker deployment
+- **Phase 1 — Foundation:** ✅ Scaffold (Vite+React+Tailwind+Express), DB migrations, app shell + nav, PWA stub
+- **Phase 2 — Core CRUD:** ✅ Meals/batches API, Dashboard, Add Item form, Item Detail, Quick Counter
+- **Phase 3 — Mealie Integration:** ✅ Mealie API service, Plan/Coverage screen with recipe photos, recipe autocomplete
+- **Phase 3.1 — Category Sync Update:** ✅ Removed hardcoded categories, store Mealie category name/slug on meals, dynamic category filters via `/api/categories`
+- **Phase 4 — Notifications:** ✅ Cron scheduler, Web Push, prompt UI, Telegram bot (optional, wired but not tested)
+- **Phase 5 — Polish:** ✅ Settings screen, TickTick OAuth + checklist integration, PWA finalisation, Docker deployment
 
 ## Key Rules
 
