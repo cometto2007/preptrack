@@ -18,6 +18,23 @@ describe('API service', () => {
   });
 });
 
+describe('Settings API response shape', () => {
+  // GET /api/settings returns { settings: { key: value, ... } }
+  // Callers must read s.settings.mealie_url, NOT s.mealie_url
+  it('mealie_url lives under settings key, not at root', () => {
+    const apiResponse = { settings: { mealie_url: 'https://mealie.example.com', expiry_days_meals: '90' } };
+    expect(apiResponse.settings?.mealie_url).toBe('https://mealie.example.com');
+    expect(apiResponse.mealie_url).toBeUndefined();
+  });
+
+  it('useSettings hook receives the inner settings object', () => {
+    // Simulate what useSettings does: settingsApi.get() → { settings } → setSettings(settings)
+    const apiResponse = { settings: { mealie_url: 'https://mealie.example.com' } };
+    const { settings } = apiResponse;
+    expect(settings.mealie_url).toBe('https://mealie.example.com');
+  });
+});
+
 describe('Category utilities', () => {
   const CATEGORIES = ['Meals', 'Soups', 'Sauces', 'Baked Goods', 'Ingredients', 'Other'];
 

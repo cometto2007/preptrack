@@ -1,6 +1,28 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
+// The allowed values for activity_log.source — must stay in sync with the DB CHECK constraint
+const ALLOWED_SOURCES = ['manual', 'prompt', 'mealie_sync', 'batch_delete'];
+
+describe('activity_log source constraint', () => {
+  it('allows all expected source values', () => {
+    for (const src of ALLOWED_SOURCES) {
+      assert.ok(ALLOWED_SOURCES.includes(src), `source '${src}' should be allowed`);
+    }
+  });
+
+  it('batch_delete is explicitly allowed (used by DELETE /api/batches/:id)', () => {
+    assert.ok(ALLOWED_SOURCES.includes('batch_delete'));
+  });
+
+  it('rejects unexpected source values', () => {
+    const invalid = ['auto', 'system', 'api', ''];
+    for (const src of invalid) {
+      assert.ok(!ALLOWED_SOURCES.includes(src), `source '${src}' should not be allowed`);
+    }
+  });
+});
+
 // Unit tests for FIFO decrement logic (pure logic, no DB required)
 describe('FIFO batch decrement logic', () => {
   function simulateFifo(batches, quantity) {

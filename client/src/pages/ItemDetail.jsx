@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, CheckCircle, AlertCircle, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useMeal } from '../hooks/useMeals';
 import { useSettings } from '../hooks/useSettings';
-import { mealsApi, settingsApi } from '../services/api';
+import { mealsApi } from '../services/api';
 import QuickCounter from '../components/shared/QuickCounter';
 import { formatDate } from '../utils/dates';
 import { buildExpiryMap } from '../utils/expiry';
@@ -13,12 +13,17 @@ function parseLocalDate(dateStr) {
   return new Date(y, m - 1, d); // local midnight, not UTC
 }
 
+function todayMidnight() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
 function daysSince(dateStr) {
-  return Math.floor((Date.now() - parseLocalDate(dateStr)) / 86400000);
+  return Math.floor((todayMidnight() - parseLocalDate(dateStr)) / 86400000);
 }
 
 function daysUntil(dateStr) {
-  return Math.floor((parseLocalDate(dateStr) - Date.now()) / 86400000);
+  return Math.floor((parseLocalDate(dateStr) - todayMidnight()) / 86400000);
 }
 
 function ActivityIcon({ action }) {
@@ -81,6 +86,7 @@ export default function ItemDetail() {
   const { data, loading, error, reload } = useMeal(id);
   const rawSettings = useSettings();
   const expiryDays = useMemo(() => buildExpiryMap(rawSettings), [rawSettings]);
+  const mealieUrl = rawSettings?.mealie_url?.replace(/\/$/, '') || null;
   const [counterMode, setCounterMode] = useState(null); // 'add' | 'remove' | null
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
@@ -232,8 +238,8 @@ export default function ItemDetail() {
         )}
 
         {/* Mealie recipe link */}
-        {meal.mealie_recipe_slug && (
-          <MealieLink slug={meal.mealie_recipe_slug} name={meal.name} />
+        {meal.mealie_recipe_slug && mealieUrl && (
+          <MealieLink slug={meal.mealie_recipe_slug} name={meal.name} baseUrl={mealieUrl} />
         )}
 
         {/* Activity log */}
@@ -329,20 +335,10 @@ export default function ItemDetail() {
   );
 }
 
-function MealieLink({ slug, name }) {
-  const [mealieUrl, setMealieUrl] = useState(null);
-
-  useEffect(() => {
-    settingsApi.get().then(s => {
-      if (s?.mealie_url) setMealieUrl(s.mealie_url.replace(/\/$/, ''));
-    }).catch(() => {});
-  }, []);
-
-  if (!mealieUrl) return null;
-
+function MealieLink({ slug, name, baseUrl }) {
   return (
     <a
-      href={`${mealieUrl}/recipe/${slug}`}
+      href={`${baseUrl}/recipe/${slug}`}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 p-4 bg-slate-800/30 rounded-xl border border-slate-800 hover:border-primary/40 transition-colors"

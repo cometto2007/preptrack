@@ -1,8 +1,14 @@
+function todayMidnight() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
 export function getExpiryInfo(earliestExpiry) {
   if (!earliestExpiry) return null;
   const [y, m, d] = earliestExpiry.split('-').map(Number);
-  const expiry = new Date(y, m - 1, d); // parse as local midnight, not UTC
-  const daysLeft = Math.floor((expiry - new Date()) / 86400000);
+  const expiry = new Date(y, m - 1, d); // local midnight
+  // Compare midnight-to-midnight so time-of-day doesn't flip today → expired
+  const daysLeft = Math.floor((expiry - todayMidnight()) / 86400000);
   if (daysLeft < 0)   return { label: 'Expired',          color: 'red' };
   if (daysLeft === 0) return { label: 'Exp Today',         color: 'red' };
   if (daysLeft <= 14) return { label: `Exp ${daysLeft}d`,  color: 'amber' };
