@@ -9,12 +9,17 @@ import { formatDate } from '../utils/dates';
 import { buildExpiryMap, calcExpiry } from '../utils/expiry';
 import { localDateStr } from '../utils/dates';
 
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d); // local midnight, not UTC
+}
+
 function daysSince(dateStr) {
-  return Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  return Math.floor((Date.now() - parseLocalDate(dateStr)) / 86400000);
 }
 
 function daysUntil(dateStr) {
-  return Math.floor((new Date(dateStr) - Date.now()) / 86400000);
+  return Math.floor((parseLocalDate(dateStr) - Date.now()) / 86400000);
 }
 
 function ActivityIcon({ action }) {

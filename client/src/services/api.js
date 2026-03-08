@@ -31,6 +31,12 @@ export const mealsApi = {
   decrement:  (id, data)    => api.post(`/meals/${id}/decrement`, data),
 };
 
+// Batches
+export const batchesApi = {
+  list:   (mealId) => api.get(`/batches${mealId ? `?meal_id=${encodeURIComponent(mealId)}` : ''}`),
+  remove: (id)     => api.delete(`/batches/${id}`),
+};
+
 // Settings
 export const settingsApi = {
   get:            ()       => api.get('/settings'),

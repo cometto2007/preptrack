@@ -6,10 +6,16 @@ export function localDateStr(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+// Parse a YYYY-MM-DD string as LOCAL midnight (avoids UTC-shift in non-UTC timezones)
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // "5 Mar 2026"
 export function formatDate(dateStr) {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-AU', {
+  return parseLocalDate(dateStr).toLocaleDateString('en-AU', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }
@@ -17,7 +23,7 @@ export function formatDate(dateStr) {
 // "5 Mar"
 export function formatDateShort(dateStr) {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-AU', {
+  return parseLocalDate(dateStr).toLocaleDateString('en-AU', {
     day: 'numeric', month: 'short',
   });
 }

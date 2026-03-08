@@ -20,13 +20,31 @@ router.get('/', async (req, res) => {
 
 // DELETE /api/batches/:id
 router.delete('/:id', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { rowCount } = await pool.query('DELETE FROM batches WHERE id = $1', [req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'Batch not found' });
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM batches WHERE id = $1', [req.params.id]);
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+    const batch = rows[0];
+    await client.query('DELETE FROM batches WHERE id = $1', [req.params.id]);
+    if (batch.portions_remaining > 0) {
+      await client.query(
+        `INSERT INTO activity_log (meal_id, action, quantity, source)
+         VALUES ($1, 'remove', $2, 'batch_delete')`,
+        [batch.meal_id, batch.portions_remaining]
+      );
+    }
+    await client.query('COMMIT');
     res.status(204).end();
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ error: 'Failed to delete batch' });
+  } finally {
+    client.release();
   }
 });
 

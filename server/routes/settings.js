@@ -7,6 +7,8 @@ router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT key, value FROM settings');
     const settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    // Never expose the API key in responses — redact it
+    if (settings.mealie_api_key) settings.mealie_api_key = '[redacted]';
     res.json({ settings });
   } catch (err) {
     console.error(err);

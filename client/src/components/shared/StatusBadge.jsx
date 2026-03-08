@@ -1,6 +1,8 @@
 export function getExpiryInfo(earliestExpiry) {
   if (!earliestExpiry) return null;
-  const daysLeft = Math.floor((new Date(earliestExpiry) - new Date()) / 86400000);
+  const [y, m, d] = earliestExpiry.split('-').map(Number);
+  const expiry = new Date(y, m - 1, d); // parse as local midnight, not UTC
+  const daysLeft = Math.floor((expiry - new Date()) / 86400000);
   if (daysLeft < 0)   return { label: 'Expired',          color: 'red' };
   if (daysLeft === 0) return { label: 'Exp Today',         color: 'red' };
   if (daysLeft <= 14) return { label: `Exp ${daysLeft}d`,  color: 'amber' };

@@ -27,18 +27,20 @@ export default function AddItem() {
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [prefilling, setPrefilling] = useState(Boolean(editId));
   const [error, setError] = useState(null);
   const nameRef = useRef(null);
 
   // Pre-fill when editing
   useEffect(() => {
     if (!editId) return;
+    setPrefilling(true);
     mealsApi.get(editId).then(({ meal }) => {
       setName(meal.name);
       setCategory(meal.category);
       setNotes(meal.notes || '');
       if (meal.notes) setShowNotes(true);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setPrefilling(false));
   }, [editId]);
 
   // Recalculate expiry whenever category, freeze date, or live settings change
@@ -106,7 +108,15 @@ export default function AddItem() {
         <h1 className="text-lg font-bold">{isEdit ? 'Edit Meal' : 'Add to Freezer'}</h1>
       </header>
 
-      <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+      {prefilling && (
+        <div className="flex-1 p-4 space-y-4 animate-pulse">
+          <div className="h-12 bg-slate-800 rounded-xl" />
+          <div className="h-12 bg-slate-800 rounded-xl" />
+          <div className="h-10 bg-slate-800 rounded-xl w-2/3" />
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={`flex-1 flex flex-col ${prefilling ? 'hidden' : ''}`}>
         <div className="flex flex-col gap-6 p-4 pb-28">
           {/* Meal name */}
           <section className="flex flex-col gap-2">
@@ -120,6 +130,7 @@ export default function AddItem() {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   placeholder="e.g. Beef Bolognese"
+                  maxLength={100}
                   className="w-full bg-transparent border-none focus:ring-0 p-4 text-base font-medium placeholder:text-slate-500 outline-none"
                   required
                 />
@@ -155,7 +166,7 @@ export default function AddItem() {
                 <button
                   type="button"
                   onClick={() => setPortions(p => Math.max(1, p - 1))}
-                  className="size-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-slate-600 transition-colors"
+                  className="size-12 rounded-full bg-slate-700 flex items-center justify-center hover:bg-slate-600 transition-colors"
                 >
                   <Minus size={18} />
                 </button>
@@ -163,7 +174,7 @@ export default function AddItem() {
                 <button
                   type="button"
                   onClick={() => setPortions(p => p + 1)}
-                  className="size-10 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors"
+                  className="size-12 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors"
                 >
                   <Plus size={18} />
                 </button>
@@ -232,6 +243,7 @@ export default function AddItem() {
                 onChange={e => setNotes(e.target.value)}
                 placeholder="Storage instructions, ingredients, or other notes..."
                 rows={3}
+                maxLength={1000}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-sm focus:outline-none focus:border-primary placeholder:text-slate-500 resize-none"
               />
             )}
