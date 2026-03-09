@@ -30,7 +30,7 @@ async function ttFetch(token, path, method = 'GET', body = null) {
  * Returns the created task object (including its id and projectId).
  */
 async function createTask(token, listId, title, content, items = []) {
-  const body = { title, content };
+  const body = { title, content, kind: 'CHECKLIST' };
   if (listId && listId !== 'inbox') body.projectId = listId;
   if (items.length > 0) {
     body.items = items.map((text, i) => ({ id: String(i + 1), title: text, status: 0 }));
@@ -74,4 +74,10 @@ async function updateTask(token, taskId, body) {
   return res.json();
 }
 
-module.exports = { createTask, getTask, updateTask };
+async function getProjects(token) {
+  const res = await ttFetch(token, '/project');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+module.exports = { createTask, getTask, updateTask, getProjects };

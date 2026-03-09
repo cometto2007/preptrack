@@ -3,7 +3,7 @@ import {
   Bell, Calendar, Snowflake, Link2, Database, ShoppingCart,
   RefreshCw, Download, Trash2, X, Clock,
 } from 'lucide-react';
-import { settingsApi, mealieApi } from '../services/api';
+import { settingsApi, mealieApi, ticktickApi } from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -198,6 +198,23 @@ export default function Settings() {
       load(); // reload settings to reflect new token status
     }
     window.addEventListener('message', onMessage);
+  }
+
+  // TickTick shopping list reset
+  const [resetting, setResetting] = useState(false);
+  const [resetStatus, setResetStatus] = useState(null); // null | 'ok' | 'error'
+  async function handleResetShoppingList() {
+    setResetting(true);
+    try {
+      await ticktickApi.resetShoppingList();
+      setResetStatus('ok');
+      setTimeout(() => setResetStatus(null), 3000);
+    } catch {
+      setResetStatus('error');
+      setTimeout(() => setResetStatus(null), 3000);
+    } finally {
+      setResetting(false);
+    }
   }
 
   // Mealie sync
@@ -512,6 +529,25 @@ export default function Settings() {
             placeholder="Leave blank for Inbox"
             onSave={saveSettings}
           />
+
+          {/* Reset shopping list */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+            <div>
+              <p className="text-sm font-medium text-slate-200">Shopping List</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {resetStatus === 'ok' ? 'Reset — next add will create a fresh task'
+                  : resetStatus === 'error' ? 'Reset failed'
+                  : 'If you deleted the task in TickTick, reset here'}
+              </p>
+            </div>
+            <button
+              onClick={handleResetShoppingList}
+              disabled={resetting}
+              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition-colors disabled:opacity-40"
+            >
+              {resetting ? 'Resetting…' : 'Reset'}
+            </button>
+          </div>
 
           <p className="text-xs text-slate-500">
             Register <span className="text-slate-400 font-mono">{window.location.origin}/api/ticktick/callback</span> as the OAuth Redirect URL in your{' '}

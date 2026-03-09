@@ -98,13 +98,25 @@ async function getMealPlan(startDate, endDate) {
   const perPage = 100;
   let page = 1;
   let allItems = [];
+  // Meal plan data changes frequently — bypass the cache entirely
   while (true) {
-    const data = await mealieRequest(url, apiKey, '/households/mealplans', {
-      start_date: startDate,
-      end_date: endDate,
-      page,
-      perPage,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let res;
+    try {
+      const qs = new URLSearchParams({ start_date: startDate, end_date: endDate, page, perPage }).toString();
+      res = await fetch(`${url}/api/households/mealplans?${qs}`, {
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(`Mealie API error ${res.status}: ${text}`);
+    }
+    const data = await res.json();
     const items = data.items || [];
     allItems = allItems.concat(items);
     if (items.length < perPage) break;

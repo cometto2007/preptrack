@@ -100,7 +100,7 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
           <div className="flex flex-col items-end gap-1">
             <button
               onClick={handleShoppingList}
-              disabled={adding || listStatus === 'ok'}
+              disabled={adding}
               title={
                 listStatus === 'ok' ? 'Added to shopping list!'
                 : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'

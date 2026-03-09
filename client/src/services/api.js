@@ -76,6 +76,8 @@ export const categoriesApi = {
 export const ticktickApi = {
   addToShoppingList: (slug, recipeName) =>
     api.post('/ticktick/shopping-list', { slug, recipeName }),
+  resetShoppingList: () =>
+    api.post('/ticktick/reset-shopping-list', {}),
 };
 
 // Notifications
