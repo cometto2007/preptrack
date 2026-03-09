@@ -130,4 +130,55 @@ async function getRecipe(slug) {
   return mealieRequest(url, apiKey, `/recipes/${encodeURIComponent(slug)}`);
 }
 
-module.exports = { searchRecipes, getMealPlan, getSettings, getRecipe };
+/**
+ * Group raw Mealie meal plan entries by date + broad meal type (lunch/dinner).
+ * - 'lunch' entries → lunch
+ * - 'dinner', 'side', 'dessert', 'drink', 'snack' → dinner
+ * - 'breakfast' and unknown types → ignored
+ * - Duplicate slugs within a group are collapsed into quantity > 1
+ *
+ * Returns: Array<{ date, mealType, recipes: Array<{ mealieId, slug, name, quantity }> }>
+ */
+function groupMealPlanEntries(rawEntries) {
+  function broadType(rawType) {
+    const t = (rawType || '').toLowerCase().trim();
+    if (t === 'lunch') return 'lunch';
+    if (['dinner', 'side', 'dessert', 'drink', 'snack'].includes(t)) return 'dinner';
+    return null;
+  }
+
+  const groups = new Map(); // "date:mealType" -> { date, mealType, recipeMap: Map<slug, recipe> }
+
+  for (const entry of rawEntries) {
+    const date = entry.date;
+    const rawType = entry.entry_type || entry.entryType || '';
+    const mealType = broadType(rawType);
+    if (!date || !mealType || !entry.recipe?.slug) continue;
+
+    const key = `${date}:${mealType}`;
+    if (!groups.has(key)) {
+      groups.set(key, { date, mealType, recipeMap: new Map() });
+    }
+
+    const group = groups.get(key);
+    const slug = entry.recipe.slug;
+    if (group.recipeMap.has(slug)) {
+      group.recipeMap.get(slug).quantity++;
+    } else {
+      group.recipeMap.set(slug, {
+        mealieId: entry.recipe.id || null,
+        slug,
+        name: entry.recipe.name || slug,
+        quantity: 1,
+      });
+    }
+  }
+
+  return Array.from(groups.values()).map(({ date, mealType, recipeMap }) => ({
+    date,
+    mealType,
+    recipes: Array.from(recipeMap.values()),
+  }));
+}
+
+module.exports = { searchRecipes, getMealPlan, getSettings, getRecipe, groupMealPlanEntries };

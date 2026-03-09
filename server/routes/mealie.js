@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const mealieSync = require('../services/mealieSync');
+const { groupMealPlanEntries } = mealieSync;
 const pool = require('../db/connection');
 
 // GET /api/mealie/recipes?q=&page=1&perPage=20
 router.get('/recipes', async (req, res) => {
   const q = req.query.q || '';
   const page = parseInt(req.query.page, 10) || 1;
-  const perPage = parseInt(req.query.perPage, 10) || 20;
+  const perPage = Math.min(100, parseInt(req.query.perPage, 10) || 20);
   try {
     const recipes = await mealieSync.searchRecipes(q, page, perPage);
     res.json({ recipes });
@@ -52,29 +53,37 @@ router.get('/meal-plan', async (req, res) => {
   const endDate = addDaysToDateStr(start, days - 1);
 
   // Fetch PrepTrack meals with total portions
-  const { rows: meals } = await pool.query(
-    `SELECT m.id, m.name, m.mealie_recipe_slug,
-            COALESCE(SUM(b.portions_remaining), 0) AS total_portions
-     FROM meals m
-     LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
-     GROUP BY m.id`
-  );
+  let meals, schedule, scheduleMap, lowThreshold;
+  try {
+    const { rows: mealRows } = await pool.query(
+      `SELECT m.id, m.name, m.mealie_recipe_slug,
+              COALESCE(SUM(b.portions_remaining), 0) AS total_portions
+       FROM meals m
+       LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
+       GROUP BY m.id`
+    );
+    meals = mealRows;
 
-  // Fetch schedule + default_portions setting
-  const { rows: schedule } = await pool.query(
-    'SELECT day_of_week, lunch_enabled, dinner_enabled FROM schedule'
-  );
-  const { rows: settingRows } = await pool.query(
-    "SELECT value FROM settings WHERE key = 'default_portions'"
-  );
-  const lowThreshold = parseInt(settingRows[0]?.value, 10) || 2;
-  // Map day_of_week -> { lunch_enabled, dinner_enabled }
-  const scheduleMap = {};
-  for (const row of schedule) {
-    scheduleMap[row.day_of_week] = {
-      lunchEnabled: row.lunch_enabled,
-      dinnerEnabled: row.dinner_enabled,
-    };
+    const { rows: scheduleRows } = await pool.query(
+      'SELECT day_of_week, lunch_enabled, dinner_enabled FROM schedule'
+    );
+    schedule = scheduleRows;
+
+    const { rows: settingRows } = await pool.query(
+      "SELECT value FROM settings WHERE key = 'default_portions'"
+    );
+    lowThreshold = parseInt(settingRows[0]?.value, 10) || 2;
+
+    scheduleMap = {};
+    for (const row of schedule) {
+      scheduleMap[row.day_of_week] = {
+        lunchEnabled: row.lunch_enabled,
+        dinnerEnabled: row.dinner_enabled,
+      };
+    }
+  } catch (err) {
+    console.error('[mealie] DB error in meal-plan:', err.message);
+    return res.status(500).json({ error: 'Database error' });
   }
 
   // Fetch Mealie plan entries
@@ -90,20 +99,14 @@ router.get('/meal-plan', async (req, res) => {
     }
   }
 
-  // Index Mealie entries by date+type
-  // Support both snake_case (entry_type) and camelCase (entryType) field names
-  // across Mealie API versions
-  const mealieMap = {}; // `${date}:${entry_type}` -> entry
-  for (const entry of mealieEntries) {
-    const entryDate = entry.date; // YYYY-MM-DD
-    const rawType = entry.entry_type || entry.entryType || '';
-    const entryType = rawType.toLowerCase(); // 'lunch' or 'dinner'
-    if (!entryDate || !entryType) continue;
-    const key = `${entryDate}:${entryType}`;
-    mealieMap[key] = entry;
+  // Group Mealie entries by date + broad meal type
+  const grouped = groupMealPlanEntries(mealieEntries);
+  const groupedMap = new Map(); // "date:mealType" -> GroupedMeal
+  for (const g of grouped) {
+    groupedMap.set(`${g.date}:${g.mealType}`, g);
   }
 
-  // Build slug -> meal lookup
+  // Build slug -> PrepTrack meal lookup
   const slugToMeal = {};
   for (const meal of meals) {
     if (meal.mealie_recipe_slug) {
@@ -111,76 +114,84 @@ router.get('/meal-plan', async (req, res) => {
     }
   }
 
+  // Compute per-recipe status
+  function recipeStatus(slug) {
+    const ptMeal = slugToMeal[slug];
+    const portions = ptMeal ? Number(ptMeal.total_portions) : 0;
+    if (!ptMeal || portions === 0) return 'missing';
+    if (portions <= lowThreshold) return 'low';
+    return 'covered';
+  }
+
+  // Compute aggregate slot status from individual recipe statuses
+  function aggregateStatus(statuses) {
+    if (statuses.length === 0) return 'unplanned';
+    if (statuses.every(s => s === 'covered')) return 'covered';
+    if (statuses.every(s => s === 'missing')) return 'missing';
+    if (statuses.every(s => s === 'covered' || s === 'low')) return 'low';
+    return 'partial'; // some covered/low, some missing
+  }
+
   const today = localDateStr();
   const resultDays = [];
   let totalEnabled = 0;
-  let covered = 0;
-  let low = 0;
-  let missing = 0;
+  let coveredCount = 0;
+  let partialCount = 0;
+  let missingCount = 0;
 
   for (let i = 0; i < days; i++) {
     const dateStr = addDaysToDateStr(start, i);
     const [y, m, d] = dateStr.split('-').map(Number);
-    const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Sun, local date
+    const dayOfWeek = new Date(y, m - 1, d).getDay();
     const sched = scheduleMap[dayOfWeek] || { lunchEnabled: true, dinnerEnabled: true };
 
     const slots = [];
     for (const slotType of ['lunch', 'dinner']) {
       const enabled = slotType === 'lunch' ? sched.lunchEnabled : sched.dinnerEnabled;
       if (!enabled) {
-        slots.push({ type: slotType, recipeName: null, slug: null, preptrackId: null, status: 'off', portions: 0 });
+        slots.push({ type: slotType, status: 'off', recipes: [] });
         continue;
       }
 
       totalEnabled++;
-      const mealieEntry = mealieMap[`${dateStr}:${slotType}`];
-      if (!mealieEntry || !mealieEntry.recipe) {
-        // No Mealie plan entry for this slot
-        slots.push({ type: slotType, recipeName: null, slug: null, preptrackId: null, status: 'unplanned', portions: 0 });
-        missing++;
+      const group = groupedMap.get(`${dateStr}:${slotType}`);
+
+      if (!group || group.recipes.length === 0) {
+        slots.push({ type: slotType, status: 'unplanned', recipes: [] });
+        missingCount++;
         continue;
       }
 
-      const recipe = mealieEntry.recipe;
-      const slug = recipe.slug;
-      const recipeId = recipe.id || null;
-      const ptMeal = slugToMeal[slug];
-      const portions = ptMeal ? Number(ptMeal.total_portions) : 0;
-
-      let status;
-      if (!ptMeal || portions === 0) {
-        status = 'missing';
-        missing++;
-      } else if (portions <= lowThreshold) {
-        status = 'low';
-        low++;
-      } else {
-        status = 'covered';
-        covered++;
-      }
-
-      slots.push({
-        type: slotType,
-        recipeName: recipe.name,
-        slug,
-        recipeId,
-        preptrackId: ptMeal ? ptMeal.id : null,
-        status,
-        portions,
+      const recipes = group.recipes.map(r => {
+        const ptMeal = slugToMeal[r.slug];
+        const portions = ptMeal ? Number(ptMeal.total_portions) : 0;
+        const status = recipeStatus(r.slug);
+        return {
+          slug: r.slug,
+          name: r.name,
+          recipeId: r.mealieId,
+          quantity: r.quantity,
+          preptrackId: ptMeal ? ptMeal.id : null,
+          portions,
+          status,
+        };
       });
+
+      const slotStatus = aggregateStatus(recipes.map(r => r.status));
+
+      if (slotStatus === 'covered' || slotStatus === 'low') coveredCount++;
+      else if (slotStatus === 'partial') partialCount++;
+      else missingCount++;
+
+      slots.push({ type: slotType, status: slotStatus, recipes });
     }
 
-    resultDays.push({
-      date: dateStr,
-      dayOfWeek,
-      isToday: dateStr === today,
-      slots,
-    });
+    resultDays.push({ date: dateStr, dayOfWeek, isToday: dateStr === today, slots });
   }
 
   res.json({
     days: resultDays,
-    summary: { total: totalEnabled, covered, low, missing },
+    summary: { total: totalEnabled, covered: coveredCount, partial: partialCount, missing: missingCount },
   });
 });
 
@@ -208,6 +219,7 @@ router.get('/recipe/:slug', async (req, res) => {
         name: recipe.name,
         mealie_category_name: category.name,
         mealie_category_slug: category.slug,
+        recipeServings: recipe.recipeServings ?? recipe.recipe_servings ?? null,
       },
     });
   } catch (err) {
@@ -223,9 +235,10 @@ router.post('/sync', async (req, res) => {
   try {
     // Fetch all Mealie recipes (paginate)
     const perPage = 50;
+    const maxPages = 20; // guard against infinite loop
     let page = 1;
     let allRecipes = [];
-    while (true) {
+    while (page <= maxPages) {
       const data = await mealieSync.searchRecipes('', page, perPage);
       if (!data || data.length === 0) break;
       allRecipes = allRecipes.concat(data);
@@ -295,7 +308,7 @@ router.get('/recipe-image/:recipeId', async (req, res) => {
   try {
     const { recipeId } = req.params;
     // Validate: Mealie recipe IDs are UUIDs
-    if (!/^[0-9a-f-]{36}$/i.test(recipeId)) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipeId)) {
       return res.status(400).end();
     }
     const { url, apiKey } = await mealieSync.getSettings();
@@ -312,7 +325,9 @@ router.get('/recipe-image/:recipeId', async (req, res) => {
     }
     if (!imgRes.ok) return res.status(imgRes.status).end();
     const buffer = await imgRes.arrayBuffer();
-    res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/webp');
+    const ct = imgRes.headers.get('content-type') || '';
+    const allowedTypes = ['image/webp', 'image/jpeg', 'image/png', 'image/gif'];
+    res.setHeader('Content-Type', allowedTypes.includes(ct) ? ct : 'image/webp');
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(Buffer.from(buffer));
   } catch {

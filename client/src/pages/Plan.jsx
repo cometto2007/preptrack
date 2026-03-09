@@ -22,6 +22,13 @@ function StatusBadge({ status, portions }) {
       </span>
     );
   }
+  if (status === 'partial') {
+    return (
+      <span className="px-2 py-1 text-[10px] font-bold rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase tracking-wide">
+        Partial
+      </span>
+    );
+  }
   if (status === 'missing') {
     return (
       <span className="px-2 py-1 text-[10px] font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20 uppercase tracking-wide">
@@ -46,23 +53,60 @@ function StatusBadge({ status, portions }) {
   return null;
 }
 
-function SlotRow({ day, slot, isToday, isPast, navigate }) {
-  const needsAction = slot.status === 'missing' || slot.status === 'unplanned';
+function RecipeRow({ recipe }) {
+  return (
+    <div className="flex items-center gap-3 py-2">
+      {recipe.recipeId ? (
+        <img
+          src={`/api/mealie/recipe-image/${recipe.recipeId}`}
+          alt={recipe.name}
+          className="w-8 h-8 rounded object-cover shrink-0 bg-slate-800"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded shrink-0 bg-slate-800" />
+      )}
+      <span className="flex-1 text-sm font-medium truncate">{recipe.name}</span>
+      {recipe.quantity > 1 && (
+        <span className="text-[11px] font-bold text-slate-400">×{recipe.quantity}</span>
+      )}
+      <StatusBadge status={recipe.status} portions={recipe.portions} />
+    </div>
+  );
+}
+
+function SlotRow({ slot, isPast }) {
+  const navigate = useNavigate();
   const isOff = slot.status === 'off';
+  const isUnplanned = slot.status === 'unplanned';
+  const hasRecipes = slot.recipes && slot.recipes.length > 0;
+  const missingRecipes = hasRecipes ? slot.recipes.filter(r => r.status === 'missing') : [];
+
   const [adding, setAdding] = useState(false);
-  const [listStatus, setListStatus] = useState(null); // null | 'ok' | 'error'
-  const [listCounts, setListCounts] = useState(null); // { added, merged }
+  const [listStatus, setListStatus] = useState(null);
+  const [listCounts, setListCounts] = useState(null);
 
   async function handleShoppingList() {
     setAdding(true);
     setListStatus(null);
     setListCounts(null);
     try {
-      const result = await ticktickApi.addToShoppingList(slot.slug, slot.recipeName);
-      setListCounts({ added: result.added ?? 0, merged: result.merged ?? 0 });
+      let totalAdded = 0;
+      let totalMerged = 0;
+      const recipesToAdd = hasRecipes
+        ? slot.recipes.filter(r => r.status === 'missing')
+        : [];
+      // If nothing specific is missing, add all planned recipes
+      const targets = recipesToAdd.length > 0 ? recipesToAdd : (slot.recipes || []);
+      for (const recipe of targets) {
+        const result = await ticktickApi.addToShoppingList(recipe.slug, recipe.name);
+        totalAdded += result.added ?? 0;
+        totalMerged += result.merged ?? 0;
+      }
+      setListCounts({ added: totalAdded, merged: totalMerged });
       setListStatus('ok');
       setTimeout(() => { setListStatus(null); setListCounts(null); }, 4000);
-    } catch {
+    } catch (err) {
+      console.error('[Plan] shopping list error:', err);
       setListStatus('error');
       setTimeout(() => setListStatus(null), 4000);
     } finally {
@@ -71,75 +115,82 @@ function SlotRow({ day, slot, isToday, isPast, navigate }) {
   }
 
   return (
-    <div className={`flex items-center gap-4 px-4 py-4 transition-colors
-      ${isOff ? 'bg-slate-900/20' : 'hover:bg-slate-900/40'}
-    `}>
-      <div className="flex flex-col min-w-[60px]">
-        <span className="text-xs font-bold text-slate-400 uppercase">{DOW[day.dayOfWeek]}</span>
-        <span className="text-sm font-semibold capitalize">{slot.type}</span>
-      </div>
-      {slot.recipeId && (
-        <img
-          src={`/api/mealie/recipe-image/${slot.recipeId}`}
-          alt={slot.recipeName}
-          className="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-800"
-        />
-      )}
-      <div className="flex-1 min-w-0">
-        {slot.recipeName ? (
-          <p className="font-medium truncate">{slot.recipeName}</p>
-        ) : (
-          <p className={`font-medium italic ${isOff ? 'text-slate-600' : 'text-slate-500'}`}>
-            {isOff ? 'Off' : 'Not planned'}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <StatusBadge status={slot.status} portions={slot.portions} />
-        {needsAction && slot.slug && (
-          <div className="flex flex-col items-end gap-1">
+    <div className={`px-4 py-3 transition-colors ${isOff ? 'bg-slate-900/20' : 'hover:bg-slate-900/40'}`}>
+      {/* Slot header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-semibold capitalize text-slate-300 shrink-0">{slot.type}</span>
+          {!hasRecipes && (
+            <span className={`text-sm italic ${isOff ? 'text-slate-600' : 'text-slate-500'}`}>
+              {isOff ? 'Off' : 'Not planned'}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <StatusBadge status={slot.status} portions={null} />
+          {hasRecipes && (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleShoppingList}
+                disabled={adding || isPast}
+                title={
+                  isPast ? 'Past day'
+                  : listStatus === 'ok' ? 'Added to shopping list!'
+                  : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
+                  : 'Add ingredients to TickTick shopping list'
+                }
+                className={`flex items-center justify-center w-12 h-12 rounded transition-colors border ${
+                  listStatus === 'ok'
+                    ? 'bg-green-900/30 border-green-700 text-green-400'
+                    : listStatus === 'error'
+                    ? 'bg-red-900/30 border-red-700 text-red-400'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
+                } disabled:opacity-50`}
+              >
+                <ShoppingCart size={20} />
+              </button>
+              {listStatus === 'ok' && listCounts && (
+                <span className="text-[11px] font-semibold text-green-400 whitespace-nowrap">
+                  +{listCounts.added}{listCounts.merged > 0 ? ` / ~${listCounts.merged}` : ''}
+                </span>
+              )}
+              {listStatus === 'error' && (
+                <span className="text-[11px] font-semibold text-red-400 whitespace-nowrap">Failed</span>
+              )}
+            </div>
+          )}
+          {missingRecipes.length > 0 && !isPast && (
             <button
-              onClick={handleShoppingList}
-              disabled={adding}
-              title={
-                listStatus === 'ok' ? 'Added to shopping list!'
-                : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
-                : 'Add ingredients to TickTick shopping list'
-              }
-              className={`flex items-center justify-center w-10 h-10 rounded transition-colors border ${
-                listStatus === 'ok'
-                  ? 'bg-green-900/30 border-green-700 text-green-400'
-                  : listStatus === 'error'
-                  ? 'bg-red-900/30 border-red-700 text-red-400'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
-              } disabled:opacity-50`}
+              onClick={() => navigate('/add', {
+                state: {
+                  name: missingRecipes[0].name || '',
+                  mealieSlug: missingRecipes[0].slug || null,
+                },
+              })}
+              className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 rounded border border-primary/10 min-h-[48px]"
             >
-              <ShoppingCart size={14} />
+              <span className="text-[10px] font-bold uppercase">Add</span>
             </button>
-            {listStatus === 'ok' && listCounts && (
-              <span className="text-[9px] font-semibold text-green-400 whitespace-nowrap">
-                +{listCounts.added}{listCounts.merged > 0 ? ` / ~${listCounts.merged}` : ''}
-              </span>
-            )}
-            {listStatus === 'error' && (
-              <span className="text-[9px] font-semibold text-red-400 whitespace-nowrap">Failed</span>
-            )}
-          </div>
-        )}
-        {needsAction && (
-          <button
-            onClick={() => navigate('/add', {
-              state: {
-                name: slot.recipeName || '',
-                mealieSlug: slot.slug || null,
-              },
-            })}
-            className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 rounded border border-primary/10 min-h-[48px]"
-          >
-            <span className="text-[10px] font-bold uppercase">Add</span>
-          </button>
-        )}
+          )}
+          {isUnplanned && !isPast && (
+            <button
+              onClick={() => navigate('/add')}
+              className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 rounded border border-primary/10 min-h-[48px]"
+            >
+              <span className="text-[10px] font-bold uppercase">Add</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Recipe sub-rows */}
+      {hasRecipes && (
+        <div className="mt-1 divide-y divide-slate-800/40">
+          {slot.recipes.map(recipe => (
+            <RecipeRow key={recipe.slug ?? recipe.recipeId ?? recipe.name} recipe={recipe} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -162,19 +213,16 @@ export default function Plan() {
 
   const DAY_OPTIONS = [7, 14, 30];
 
-  // Compute summary
-  const summary = data?.summary ?? { total: 0, covered: 0, low: 0, missing: 0 };
-  const coverageCount = summary.covered + summary.low;
+  const summary = data?.summary ?? { total: 0, covered: 0, partial: 0, missing: 0 };
+  const coverageCount = summary.covered;
   const coveragePct = summary.total > 0 ? Math.round((coverageCount / summary.total) * 100) : 0;
 
-  // SVG circle progress
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (coveragePct / 100) * circumference;
 
   return (
     <div className="flex flex-col min-h-full pb-24">
-      {/* Sticky header */}
       <header className="sticky top-0 z-20 bg-bg-app/80 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-slate-800">
         <h1 className="text-xl font-bold tracking-tight">Plan</h1>
       </header>
@@ -214,7 +262,11 @@ export default function Plan() {
                 )}
               </div>
               <div className="relative flex items-center justify-center">
-                <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                <svg
+                  className="w-16 h-16 -rotate-90"
+                  viewBox="0 0 64 64"
+                  aria-label={loading ? 'Loading coverage' : `${coveragePct}% coverage`}
+                >
                   <circle
                     className="text-slate-800"
                     cx="32" cy="32" r={radius}
@@ -245,9 +297,12 @@ export default function Plan() {
                 style={{ width: loading ? '0%' : `${coveragePct}%` }}
               />
             </div>
-            {!loading && summary.missing > 0 && (
+            {!loading && (summary.partial > 0 || summary.missing > 0) && (
               <p className="mt-3 text-xs text-slate-500">
-                {summary.missing} meal{summary.missing !== 1 ? 's' : ''} still need{summary.missing === 1 ? 's' : ''} to be covered.
+                {[
+                  summary.partial > 0 && `${summary.partial} partial`,
+                  summary.missing > 0 && `${summary.missing} missing`,
+                ].filter(Boolean).join(', ')} — add items above or plan in Mealie.
               </p>
             )}
           </div>
@@ -260,10 +315,7 @@ export default function Plan() {
             {error.toLowerCase().includes('configured') ? (
               <p className="text-xs text-slate-500">
                 Connect Mealie in{' '}
-                <button
-                  onClick={() => navigate('/settings')}
-                  className="text-primary underline"
-                >
+                <button onClick={() => navigate('/settings')} className="text-primary underline">
                   Settings
                 </button>
               </p>
@@ -276,9 +328,7 @@ export default function Plan() {
         {/* Skeleton */}
         {loading && !error && (
           <div className="space-y-6 mt-2">
-            <DaySkeleton />
-            <DaySkeleton />
-            <DaySkeleton />
+            <DaySkeleton /><DaySkeleton /><DaySkeleton />
           </div>
         )}
 
@@ -287,27 +337,19 @@ export default function Plan() {
           <div className="border-t border-slate-800">
             {data.days.map(day => {
               const isPast = day.date < today;
-              const isToday = day.date === today; // computed client-side to avoid server UTC skew
+              const isToday = day.date === today;
               const allOff = day.slots.every(s => s.status === 'off');
 
               return (
                 <div key={day.date} className={isPast ? 'opacity-50' : ''}>
-                  {/* Day separator */}
-                  <div className={`flex items-center gap-3 px-4 py-3 border-b border-slate-800 ${isPast ? '' : ''}`}>
-                    {isToday && (
-                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
-                    )}
-                    {!isToday && (
-                      <span className="h-2 w-2 rounded-full bg-slate-700 shrink-0" />
-                    )}
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800">
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${isToday ? 'bg-primary animate-pulse' : 'bg-slate-700'}`} />
                     <span className={`text-xs font-bold uppercase tracking-widest ${isToday ? 'text-primary' : 'text-slate-400'}`}>
-                      {formatDateShort(day.date)}
-                      {isToday && ' · Today'}
+                      {formatDateShort(day.date)}{isToday && ' · Today'}
                     </span>
                     <div className={`h-px flex-1 ${isToday ? 'bg-primary/20' : 'bg-slate-800'}`} />
                   </div>
 
-                  {/* Collapsed weekend row */}
                   {allOff ? (
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/20">
                       <div className="flex items-center gap-3">
@@ -320,11 +362,8 @@ export default function Plan() {
                       {day.slots.map(slot => (
                         <SlotRow
                           key={slot.type}
-                          day={day}
                           slot={slot}
-                          isToday={isToday}
                           isPast={isPast}
-                          navigate={navigate}
                         />
                       ))}
                     </div>
@@ -332,17 +371,6 @@ export default function Plan() {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Footer summary */}
-        {!loading && !error && data && summary.missing > 0 && (
-          <div className="mx-4 mb-4">
-            <div className="bg-slate-900/30 border border-slate-800/50 rounded-lg py-3 px-4 flex items-center justify-center gap-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-                {summary.missing} meal{summary.missing !== 1 ? 's' : ''} uncovered — add individually above
-              </p>
-            </div>
           </div>
         )}
       </main>
