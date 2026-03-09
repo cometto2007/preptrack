@@ -40,7 +40,7 @@ function RecipeDefrostRow({ recipe, count, onChange }) {
 
 export default function LunchPrompt({ prompt, onResolved }) {
   // counts[i] = defrost count for prompt.recipes[i]
-  const [counts, setCounts] = useState(() => prompt.recipes.map(() => 0));
+  const [counts, setCounts] = useState(() => (prompt.recipes ?? []).map(() => 0));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 

@@ -47,7 +47,7 @@ export default function DinnerPrompt({ prompt, onResolved }) {
   const [error, setError] = useState(null);
   // Step: null = action selection, 'froze_portions' | 'ate_and_froze' | 'used_freezer' = counter step
   const [step, setStep] = useState(null);
-  const [counts, setCounts] = useState(() => prompt.recipes.map(() => 0));
+  const [counts, setCounts] = useState(() => (prompt.recipes ?? []).map(() => 0));
 
   const anyStocked = prompt.recipes.some(r => r.freezer_stock > 0);
   const anyCounted = counts.some(c => c > 0);
