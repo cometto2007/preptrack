@@ -87,4 +87,5 @@ export const notificationsApi = {
   subscribe:       (sub)                => api.post('/notifications/subscribe', sub),
   unsubscribe:     (endpoint)           => api.post('/notifications/unsubscribe', { endpoint }),
   resolve:         (id, data)           => api.post(`/notifications/resolve/${id}`, data),
+  resolveGroup:    (resolutions)        => api.post('/notifications/resolve-group', { resolutions }),
 };

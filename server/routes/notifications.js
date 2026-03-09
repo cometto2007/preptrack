@@ -3,20 +3,43 @@ const router = express.Router();
 const pool = require('../db/connection');
 const { vapidPublicKey, vapidConfigured } = require('../services/pushService');
 
-// GET /api/notifications/pending — open reservations needing user action
+// GET /api/notifications/pending — open reservations grouped by date+meal_type
 router.get('/pending', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT r.*, m.name AS meal_name, m.mealie_category_name,
+      SELECT r.id, r.meal_id, r.meal_plan_date, r.meal_type, r.status,
+             COALESCE(r.planned_quantity, 1) AS planned_quantity,
+             m.name AS meal_name, m.mealie_recipe_slug,
              COALESCE(SUM(b.portions_remaining), 0)::int AS freezer_stock
       FROM reservations r
       JOIN meals m ON m.id = r.meal_id
       LEFT JOIN batches b ON b.meal_id = r.meal_id AND b.portions_remaining > 0
       WHERE r.status = 'pending'
-      GROUP BY r.id, m.name, m.mealie_category_name
-      ORDER BY r.meal_plan_date ASC
+      GROUP BY r.id, m.name, m.mealie_recipe_slug
+      ORDER BY r.meal_plan_date ASC, r.id ASC
     `);
-    res.json({ prompts: rows });
+
+    // Group reservations by date + meal_type into prompt objects
+    const groupMap = new Map();
+    for (const row of rows) {
+      const dateStr = typeof row.meal_plan_date === 'string'
+        ? row.meal_plan_date
+        : row.meal_plan_date.toISOString().slice(0, 10);
+      const key = `${dateStr}:${row.meal_type}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { date: dateStr, meal_type: row.meal_type, recipes: [] });
+      }
+      groupMap.get(key).recipes.push({
+        id: row.id,
+        meal_id: row.meal_id,
+        meal_name: row.meal_name,
+        mealie_recipe_slug: row.mealie_recipe_slug,
+        freezer_stock: row.freezer_stock,
+        planned_quantity: row.planned_quantity,
+      });
+    }
+
+    res.json({ prompts: Array.from(groupMap.values()) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch pending notifications' });
@@ -83,6 +106,95 @@ router.post('/unsubscribe', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to remove subscription' });
+  }
+});
+
+// POST /api/notifications/resolve-group
+// Resolves multiple reservations in a single transaction.
+// Body: { resolutions: [{ id, action, portions?, freeze_date?, expiry_date? }] }
+router.post('/resolve-group', async (req, res) => {
+  const { resolutions } = req.body;
+  if (!Array.isArray(resolutions) || resolutions.length === 0) {
+    return res.status(400).json({ error: 'resolutions must be a non-empty array' });
+  }
+
+  const VALID_ACTIONS = ['defrost', 'cooking_fresh', 'skip', 'ate_fresh', 'froze_portions', 'ate_and_froze', 'used_freezer'];
+
+  for (const r of resolutions) {
+    if (!Number.isInteger(r.id) || r.id <= 0) {
+      return res.status(400).json({ error: 'Each resolution must have a valid id' });
+    }
+    if (!VALID_ACTIONS.includes(r.action)) {
+      return res.status(400).json({ error: `Invalid action: ${r.action}` });
+    }
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    for (const r of resolutions) {
+      const { rows: resRows } = await client.query(
+        `SELECT r.*, m.name AS meal_name FROM reservations r
+         JOIN meals m ON m.id = r.meal_id
+         WHERE r.id = $1 FOR UPDATE`,
+        [r.id]
+      );
+      if (!resRows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: `Reservation ${r.id} not found` });
+      }
+      const reservation = resRows[0];
+      if (reservation.status !== 'pending') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `Reservation ${r.id} already resolved` });
+      }
+
+      const mealId = reservation.meal_id;
+      const newStatus = r.action === 'skip' ? 'cancelled' : 'confirmed';
+
+      await client.query(
+        `UPDATE reservations SET status = $1, resolved_at = NOW() WHERE id = $2`,
+        [newStatus, r.id]
+      );
+
+      if (r.action === 'defrost' || r.action === 'used_freezer') {
+        const qty = Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10);
+        if (!Number.isInteger(qty) || qty <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `portions must be a positive integer for reservation ${r.id}` });
+        }
+        try {
+          await fifoDecrement(client, mealId, qty, r.action);
+        } catch (stockErr) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: stockErr.message });
+        }
+      } else if (r.action === 'froze_portions' || r.action === 'ate_and_froze') {
+        const qty = Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10);
+        if (!Number.isInteger(qty) || qty <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `portions must be a positive integer for reservation ${r.id}` });
+        }
+        try {
+          await addBatch(client, mealId, qty, r.freeze_date || null, r.expiry_date || null, 'prompt');
+        } catch (batchErr) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: batchErr.message });
+        }
+      }
+      // cooking_fresh, skip, ate_fresh — no inventory change
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, resolved: resolutions.length });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    console.error('[notifications] resolve-group error:', err.message);
+    res.status(500).json({ error: 'Failed to resolve prompts' });
+  } finally {
+    if (client) client.release();
   }
 });
 

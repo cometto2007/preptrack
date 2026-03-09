@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const pool = require('../db/connection');
 const mealieSync = require('./mealieSync');
+const { groupMealPlanEntries } = mealieSync;
 const { sendToAll } = require('./pushService');
 
 // Returns today's date as YYYY-MM-DD in server local time
@@ -24,7 +25,7 @@ function dayOfWeek(dateStr) {
 
 /**
  * Afternoon job: checks tomorrow's lunch plan.
- * Creates a reservation + sends push if there is freezer stock.
+ * Creates one reservation per recipe in the grouped meal + sends push.
  */
 async function runLunchPrompt() {
   try {
@@ -38,7 +39,7 @@ async function runLunchPrompt() {
     if (!schedRows[0]?.lunch_enabled) return;
 
     // Check for override
-    const weekStart = addDays(tomorrow, -dow); // Monday is relative — use Sunday as week_start
+    const weekStart = addDays(tomorrow, -dow);
     const { rows: overrideRows } = await pool.query(
       `SELECT override_type FROM schedule_overrides
        WHERE week_start = $1 AND day_of_week = $2 AND meal_type = 'lunch'`,
@@ -46,14 +47,14 @@ async function runLunchPrompt() {
     );
     if (overrideRows[0]?.override_type === 'disabled') return;
 
-    // Skip if reservation already exists for tomorrow lunch
+    // Skip if any reservations already exist for tomorrow lunch
     const { rows: existing } = await pool.query(
       `SELECT id FROM reservations WHERE meal_plan_date = $1 AND meal_type = 'lunch' AND status = 'pending'`,
       [tomorrow]
     );
     if (existing.length) return;
 
-    // Fetch Mealie plan for tomorrow
+    // Fetch Mealie plan and group entries for tomorrow
     let planEntries = [];
     try {
       planEntries = await mealieSync.getMealPlan(tomorrow, tomorrow);
@@ -61,41 +62,50 @@ async function runLunchPrompt() {
       return; // Mealie not configured or unreachable — skip
     }
 
-    const lunchEntry = planEntries.find(e => (e.entry_type || e.entryType || '').toLowerCase() === 'lunch');
-    if (!lunchEntry?.recipe?.slug) return;
+    const groups = groupMealPlanEntries(planEntries);
+    const lunchGroup = groups.find(g => g.mealType === 'lunch');
+    if (!lunchGroup || lunchGroup.recipes.length === 0) return;
 
-    const slug = lunchEntry.recipe.slug;
+    // For each recipe, find the PrepTrack meal and create a reservation
+    const reservedNames = [];
+    let anyStocked = false;
 
-    // Find PrepTrack meal + freezer stock
-    const { rows: mealRows } = await pool.query(
-      `SELECT m.id, m.name, COALESCE(SUM(b.portions_remaining), 0)::int AS stock
-       FROM meals m
-       LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
-       WHERE m.mealie_recipe_slug = $1
-       GROUP BY m.id`,
-      [slug]
-    );
-    const meal = mealRows[0];
-    if (!meal || meal.stock === 0) return; // nothing to defrost
+    for (const recipe of lunchGroup.recipes) {
+      const { rows: mealRows } = await pool.query(
+        `SELECT m.id, m.name, COALESCE(SUM(b.portions_remaining), 0)::int AS stock
+         FROM meals m
+         LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
+         WHERE m.mealie_recipe_slug = $1
+         GROUP BY m.id`,
+        [recipe.slug]
+      );
+      const meal = mealRows[0];
+      if (!meal) continue;
 
-    // Create reservation
-    const { rows: resRows } = await pool.query(
-      `INSERT INTO reservations (meal_id, meal_plan_date, meal_type)
-       VALUES ($1, $2, 'lunch')
-       ON CONFLICT (meal_plan_date, meal_type) DO NOTHING
-       RETURNING id`,
-      [meal.id, tomorrow]
-    );
-    if (!resRows.length) return; // conflict — already exists
+      const { rows: resRows } = await pool.query(
+        `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
+         VALUES ($1, $2, 'lunch', $3)
+         ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
+         RETURNING id`,
+        [meal.id, tomorrow, recipe.quantity]
+      );
+      if (!resRows.length) continue; // conflict — already exists
 
-    // Send push
+      reservedNames.push(meal.name);
+      if (meal.stock > 0) anyStocked = true;
+    }
+
+    if (reservedNames.length === 0) return;
+    if (!anyStocked) return; // nothing to defrost
+
+    const mealList = reservedNames.join(' + ');
     await sendToAll({
       title: "Tomorrow's Lunch",
-      body: `${meal.name} — ${meal.stock} portion${meal.stock !== 1 ? 's' : ''} in freezer. Time to defrost?`,
+      body: `${mealList} — time to defrost?`,
       url: '/',
     });
 
-    console.log(`[scheduler] Lunch prompt created for ${tomorrow}: ${meal.name}`);
+    console.log(`[scheduler] Lunch prompt created for ${tomorrow}: ${mealList}`);
   } catch (err) {
     console.error('[scheduler] Lunch prompt error:', err.message);
   }
@@ -103,7 +113,7 @@ async function runLunchPrompt() {
 
 /**
  * Evening job: checks tonight's dinner plan.
- * Creates a reservation + sends "what happened?" push.
+ * Creates one reservation per recipe in the grouped meal + sends push.
  */
 async function runDinnerPrompt() {
   try {
@@ -125,14 +135,14 @@ async function runDinnerPrompt() {
     );
     if (overrideRows[0]?.override_type === 'disabled') return;
 
-    // Skip if reservation already exists for tonight dinner
+    // Skip if any reservations already exist for tonight dinner
     const { rows: existing } = await pool.query(
       `SELECT id FROM reservations WHERE meal_plan_date = $1 AND meal_type = 'dinner' AND status = 'pending'`,
       [today]
     );
     if (existing.length) return;
 
-    // Fetch Mealie plan for today
+    // Fetch Mealie plan and group entries for today
     let planEntries = [];
     try {
       planEntries = await mealieSync.getMealPlan(today, today);
@@ -140,44 +150,49 @@ async function runDinnerPrompt() {
       return;
     }
 
-    const dinnerEntry = planEntries.find(e => (e.entry_type || e.entryType || '').toLowerCase() === 'dinner');
-    if (!dinnerEntry?.recipe?.slug) return;
+    const groups = groupMealPlanEntries(planEntries);
+    const dinnerGroup = groups.find(g => g.mealType === 'dinner');
+    if (!dinnerGroup || dinnerGroup.recipes.length === 0) return;
 
-    const slug = dinnerEntry.recipe.slug;
+    const reservedNames = [];
+    let anyStocked = false;
 
-    // Find PrepTrack meal + freezer stock (stock informs push body)
-    const { rows: mealRows } = await pool.query(
-      `SELECT m.id, m.name, COALESCE(SUM(b.portions_remaining), 0)::int AS stock
-       FROM meals m
-       LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
-       WHERE m.mealie_recipe_slug = $1
-       GROUP BY m.id`,
-      [slug]
-    );
-    const meal = mealRows[0];
-    if (!meal) return;
+    for (const recipe of dinnerGroup.recipes) {
+      const { rows: mealRows } = await pool.query(
+        `SELECT m.id, m.name, COALESCE(SUM(b.portions_remaining), 0)::int AS stock
+         FROM meals m
+         LEFT JOIN batches b ON b.meal_id = m.id AND b.portions_remaining > 0
+         WHERE m.mealie_recipe_slug = $1
+         GROUP BY m.id`,
+        [recipe.slug]
+      );
+      const meal = mealRows[0];
+      if (!meal) continue;
 
-    // Create reservation
-    const { rows: resRows } = await pool.query(
-      `INSERT INTO reservations (meal_id, meal_plan_date, meal_type)
-       VALUES ($1, $2, 'dinner')
-       ON CONFLICT (meal_plan_date, meal_type) DO NOTHING
-       RETURNING id`,
-      [meal.id, today]
-    );
-    if (!resRows.length) return;
+      const { rows: resRows } = await pool.query(
+        `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
+         VALUES ($1, $2, 'dinner', $3)
+         ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
+         RETURNING id`,
+        [meal.id, today, recipe.quantity]
+      );
+      if (!resRows.length) continue;
 
-    // Send push — mention freezer stock so user knows if "Used from Freezer" is relevant
-    const stockNote = meal.stock > 0
-      ? ` (${meal.stock} portion${meal.stock !== 1 ? 's' : ''} in freezer)`
-      : '';
+      reservedNames.push(meal.name);
+      if (meal.stock > 0) anyStocked = true;
+    }
+
+    if (reservedNames.length === 0) return;
+
+    const mealList = reservedNames.join(' + ');
+    const stockNote = anyStocked ? '' : ' (no freezer stock)';
     await sendToAll({
       title: "Tonight's Dinner",
-      body: `${meal.name}${stockNote} — what happened? Log it to keep your inventory accurate.`,
+      body: `${mealList}${stockNote} — what happened? Log it to keep your inventory accurate.`,
       url: '/',
     });
 
-    console.log(`[scheduler] Dinner prompt created for ${today}: ${meal.name}`);
+    console.log(`[scheduler] Dinner prompt created for ${today}: ${mealList}`);
   } catch (err) {
     console.error('[scheduler] Dinner prompt error:', err.message);
   }
@@ -185,8 +200,6 @@ async function runDinnerPrompt() {
 
 /**
  * Parse "HH:MM" time string into a cron expression "M H * * *".
- * NOTE: cron jobs run in the server process timezone. Ensure TZ is set correctly
- * in the deployment environment (e.g. TZ=Europe/London in .env or systemd unit).
  */
 function timeToCron(timeStr) {
   const [h, m] = (timeStr || '').split(':').map(Number);
@@ -200,14 +213,9 @@ function timeToCron(timeStr) {
   return `${minute} ${hour} * * *`;
 }
 
-// Active cron tasks — kept so they can be destroyed on reschedule
 let lunchTask  = null;
 let dinnerTask = null;
 
-/**
- * Schedule (or reschedule) cron jobs from the given time strings.
- * Destroys existing tasks before creating new ones.
- */
 function scheduleJobs(lunchTime, dinnerTime) {
   if (lunchTask)  { lunchTask.stop();  lunchTask  = null; }
   if (dinnerTask) { dinnerTask.stop(); dinnerTask = null; }
@@ -218,10 +226,6 @@ function scheduleJobs(lunchTime, dinnerTime) {
   console.log(`[scheduler] Scheduled — lunch at ${lunchTime}, dinner at ${dinnerTime}`);
 }
 
-/**
- * Start the scheduler. Called once at server startup.
- * Reads prompt times from DB settings; falls back to defaults.
- */
 async function start() {
   try {
     const { rows } = await pool.query(
@@ -234,10 +238,6 @@ async function start() {
   }
 }
 
-/**
- * Reschedule cron jobs after prompt times are changed in Settings.
- * Reads fresh values from DB — call after saving new times.
- */
 async function reschedule() {
   try {
     const { rows } = await pool.query(

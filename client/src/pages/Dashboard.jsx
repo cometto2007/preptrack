@@ -161,8 +161,8 @@ export default function Dashboard() {
             </div>
             {prompts.map(prompt =>
               prompt.meal_type === 'lunch'
-                ? <LunchPrompt key={prompt.id} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
-                : <DinnerPrompt key={prompt.id} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
+                ? <LunchPrompt key={`${prompt.date}:${prompt.meal_type}`} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
+                : <DinnerPrompt key={`${prompt.date}:${prompt.meal_type}`} prompt={prompt} onResolved={() => { loadPrompts(); reload(); }} />
             )}
           </section>
         )}
