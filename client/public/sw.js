@@ -31,6 +31,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  const isLocalDevHost =
+    self.location.hostname === 'localhost' ||
+    self.location.hostname === '127.0.0.1';
+
+  // In local dev, avoid cache-first behavior to prevent stale bundles while
+  // keeping service worker registration available for push testing.
+  if (isLocalDevHost) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;

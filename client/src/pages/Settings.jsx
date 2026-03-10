@@ -3,7 +3,7 @@ import {
   Bell, Calendar, Snowflake, Link2, Database, ShoppingCart,
   RefreshCw, Download, Trash2, X, Clock,
 } from 'lucide-react';
-import { settingsApi, mealieApi, ticktickApi } from '../services/api';
+import { settingsApi, mealieApi, ticktickApi, notificationsApi } from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -123,7 +123,15 @@ function DayCell({ day, lunchEnabled, dinnerEnabled, onToggle }) {
 }
 
 export default function Settings() {
-  const { supported, subscribed, subscribe, unsubscribe, loading: pushLoading, error: pushError } = usePushNotifications();
+  const {
+    supported,
+    subscribed,
+    currentEndpoint,
+    subscribe,
+    unsubscribe,
+    loading: pushLoading,
+    error: pushError,
+  } = usePushNotifications();
 
   const [settings, setSettings]     = useState({});
   const [schedule, setSchedule]     = useState([]); // 7 rows from DB (day_of_week 0–6)
@@ -134,6 +142,9 @@ export default function Settings() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearDone, setClearDone]   = useState(false);
   const [exportError, setExportError] = useState(null);
+  const [testPushStatus, setTestPushStatus] = useState(null); // null | 'sending' | 'ok' | 'error'
+  const [testPushMessage, setTestPushMessage] = useState(null);
+  const [localNotifStatus, setLocalNotifStatus] = useState(null); // null | 'ok' | 'error'
   // Controlled state for prompt time inputs (initialized from settings once loaded)
   const [lunchTime, setLunchTime]   = useState('15:00');
   const [dinnerTime, setDinnerTime] = useState('20:00');
@@ -274,6 +285,49 @@ export default function Settings() {
     return `${dayName} ${meal} → ${type}`;
   }
 
+  async function handleTestPush() {
+    setTestPushStatus('sending');
+    setTestPushMessage(null);
+    try {
+      const result = await notificationsApi.testPush(currentEndpoint || undefined);
+      setTestPushStatus('ok');
+      const label = result.target === 'current_device' ? 'current device' : `${result.sent_to} subscription${result.sent_to === 1 ? '' : 's'}`;
+      setTestPushMessage(`Sent to ${label}`);
+      setTimeout(() => { setTestPushStatus(null); setTestPushMessage(null); }, 4000);
+    } catch (e) {
+      setTestPushStatus('error');
+      setTestPushMessage(e.message || 'Failed to send test push');
+      setTimeout(() => { setTestPushStatus(null); setTestPushMessage(null); }, 5000);
+    }
+  }
+
+  async function handleLocalNotificationTest() {
+    try {
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+        throw new Error('Notifications are not supported in this browser.');
+      }
+      if (Notification.permission !== 'granted') {
+        throw new Error('Browser notification permission is not granted.');
+      }
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('PrepTrack Local Test', {
+        body: 'Local notification display is working on this device.',
+        icon: '/icons/icon.svg',
+        badge: '/icons/icon.svg',
+        tag: 'preptrack-local-test',
+      });
+      setLocalNotifStatus('ok');
+      setTimeout(() => setLocalNotifStatus(null), 3000);
+    } catch (e) {
+      setLocalNotifStatus('error');
+      setTestPushMessage(e.message || 'Failed to display local notification');
+      setTimeout(() => {
+        setLocalNotifStatus(null);
+        setTestPushMessage(null);
+      }, 5000);
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-xl mx-auto space-y-8 pb-24">
       <header className="mb-2">
@@ -286,7 +340,7 @@ export default function Settings() {
         <SectionHeader icon={Bell} title="Notification Preferences" />
         <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-4">
           {/* Push toggle */}
-          {supported && (
+          {supported ? (
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-200">Push Notifications</p>
@@ -304,8 +358,44 @@ export default function Settings() {
                 }`} />
               </button>
             </div>
+          ) : (
+            <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700">
+              <p className="text-sm font-medium text-slate-200">Push notifications unavailable</p>
+              <p className="text-xs text-slate-400 mt-1">
+                This browser on this device does not support web push for this app context.
+              </p>
+            </div>
           )}
           {pushError && <p className="text-red-400 text-xs">{pushError}</p>}
+
+          {/* Push test */}
+          {supported && (
+            <div className="pt-1">
+              <button
+                onClick={handleTestPush}
+                disabled={testPushStatus === 'sending'}
+                className="flex w-full items-center justify-center gap-2 h-10 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors disabled:opacity-60"
+              >
+                <Bell size={14} />
+                {testPushStatus === 'sending' ? 'Sending Test Notification…' : 'Send Test Notification'}
+              </button>
+              <button
+                onClick={handleLocalNotificationTest}
+                className="mt-2 flex w-full items-center justify-center gap-2 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition-colors"
+              >
+                <Bell size={14} />
+                Show Local Test Notification
+              </button>
+              {testPushMessage && (
+                <p className={`text-xs mt-2 ${testPushStatus === 'error' ? 'text-red-400' : 'text-slate-400'}`}>
+                  {testPushMessage}
+                </p>
+              )}
+              {localNotifStatus === 'ok' && !testPushMessage && (
+                <p className="text-xs mt-2 text-slate-400">Local notification displayed.</p>
+              )}
+            </div>
+          )}
 
           {/* Telegram */}
           <SettingField

@@ -88,6 +88,7 @@ export const notificationsApi = {
   getVapidKey:     ()                   => api.get('/notifications/vapid-public-key'),
   subscribe:       (sub)                => api.post('/notifications/subscribe', sub),
   unsubscribe:     (endpoint)           => api.post('/notifications/unsubscribe', { endpoint }),
+  testPush:        (endpoint)           => api.post('/notifications/test', endpoint ? { endpoint } : {}),
   resolve:         (id, data)           => api.post(`/notifications/resolve/${id}`, data),
   resolveGroup:    (resolutions)        => api.post('/notifications/resolve-group', { resolutions }),
 };
