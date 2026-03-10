@@ -7,18 +7,18 @@ export default function AppShell({ children }) {
   const { canInstall, install, dismiss } = useInstallPrompt();
 
   return (
-    <div className="flex h-dvh bg-bg-app text-slate-100 overflow-hidden">
+    <div className="flex h-dvh bg-[#22364f] text-[#e6eef6] overflow-hidden">
       {/* Desktop sidebar — hidden on mobile */}
       <Sidebar />
 
       {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#22364f]">
         {/* Install banner — shown only when native install is available */}
         {canInstall && (
           <div className="md:hidden flex items-center justify-between gap-3 px-4 py-2.5 bg-primary/10 border-b border-primary/20 shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <Download size={15} className="text-primary shrink-0" />
-              <p className="text-xs text-slate-300 truncate">
+              <p className="text-xs text-[#c6d4e2] truncate">
                 Add PrepTrack to your home screen for the best experience
               </p>
             </div>
@@ -32,7 +32,7 @@ export default function AppShell({ children }) {
               <button
                 onClick={dismiss}
                 aria-label="Dismiss install banner"
-                className="text-slate-400 hover:text-slate-200 transition-colors"
+                className="text-[#8ea3bb] hover:text-[#dce7f3] transition-colors"
               >
                 <X size={14} />
               </button>

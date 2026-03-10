@@ -17,7 +17,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-slate-800 bg-bg-app flex-shrink-0">
+    <aside className="hidden md:flex flex-col w-64 border-r border-[#243b56] bg-[#071525] flex-shrink-0">
       {/* Logo */}
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white flex-shrink-0">
@@ -25,7 +25,7 @@ export default function Sidebar() {
         </div>
         <div>
           <h1 className="font-bold text-lg tracking-tight leading-none">PrepTrack</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Meal Prep Manager</p>
+          <p className="text-xs text-[#8ea3bb] mt-0.5">Meal Prep Manager</p>
         </div>
       </div>
 
@@ -39,8 +39,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                  ? 'bg-[#19324a] text-[#9bc0ff]'
+                  : 'text-[#8ea3bb] hover:bg-[#0f2338] hover:text-[#e6eef6]'
               }`
             }
           >
@@ -55,8 +55,8 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-slate-800">
-        <p className="text-xs text-slate-500">PrepTrack v1.0</p>
+      <div className="px-6 py-4 border-t border-[#243b56]">
+        <p className="text-xs text-[#6f849b]">PrepTrack v1.0</p>
       </div>
     </aside>
   );

@@ -5,12 +5,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#2b8cee',
-        'primary-dark': '#1a6fca',
+        primary: '#4d8ff7',
+        'primary-dark': '#2f72dd',
         'accent-teal': '#14b8a6',
-        'bg-app': '#101922',
-        'bg-card': 'rgb(30 41 59 / 0.5)', // slate-800/50
-        'bg-surface': '#1e2a38',
+        'bg-app': '#22364f',
+        'bg-card': '#0c1724',
+        'bg-surface': '#1f3249',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
