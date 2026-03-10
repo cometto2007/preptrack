@@ -16,12 +16,14 @@ import { ticktickApi } from '../../services/api';
  * - onClose: () => void
  * - onAdded: ({ added, merged }) => void - callback when successfully added
  */
+// Guard wrapper — never mounts the inner component when there's nothing to show,
+// avoiding a hooks-before-return violation.
 export default function ShoppingListOverlay({ recipes, onClose, onAdded }) {
-  // Guard against null/undefined recipes
-  if (!recipes || recipes.length === 0) {
-    return null;
-  }
+  if (!recipes || recipes.length === 0) return null;
+  return <ShoppingListOverlayInner recipes={recipes} onClose={onClose} onAdded={onAdded} />;
+}
 
+function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
   // Initialize selections - only check recipes with missing/low stock by default
   const [selections, setSelections] = useState(() => {
     return recipes.map(r => ({
@@ -42,11 +44,11 @@ export default function ShoppingListOverlay({ recipes, onClose, onAdded }) {
 
   const anyChecked = selections.some(s => s.checked);
 
-  // Calculate total portions (accounting for meal plan quantity)
+  // Calculate total portions — s.portions already includes the quantity multiplier
   const totals = useMemo(() => {
     return selections.reduce((acc, s) => {
       if (s.checked) {
-        acc.totalPortions += s.portions * s.quantity;
+        acc.totalPortions += s.portions;
         acc.recipeCount += 1;
       }
       return acc;
@@ -78,7 +80,7 @@ export default function ShoppingListOverlay({ recipes, onClose, onAdded }) {
     setSelections(prev => prev.map(s => ({
       ...s,
       checked: true,
-      portions: s.recipeServings,
+      portions: s.recipeServings * s.quantity, // match the initial default
     })));
   }
 
@@ -191,22 +193,24 @@ export default function ShoppingListOverlay({ recipes, onClose, onAdded }) {
                       : 'bg-transparent border-slate-800/50 opacity-60'
                   }`}
                 >
-                  {/* Checkbox */}
+                  {/* Checkbox — 48px tap target wrapping 24px visual */}
                   <button
                     type="button"
                     onClick={() => toggleChecked(index)}
-                    className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors shrink-0 ${
+                    className="w-12 h-12 flex items-center justify-center shrink-0 -ml-3"
+                    aria-label={selection.checked ? 'Deselect' : 'Select'}
+                  >
+                    <span className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
                       selection.checked
                         ? 'bg-primary text-white'
                         : 'bg-slate-800 border border-slate-600'
-                    }`}
-                    aria-label={selection.checked ? 'Deselect' : 'Select'}
-                  >
-                    {selection.checked && (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+                    }`}>
+                      {selection.checked && (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
                   </button>
 
                   {/* Recipe image */}

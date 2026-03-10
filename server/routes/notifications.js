@@ -134,7 +134,7 @@ router.post('/resolve-group', async (req, res) => {
     // Validate that all resolutions are for pending reservations
     // and that they belong to the same date/meal_type group
     const { rows: reservationChecks } = await pool.query(
-      `SELECT id, meal_plan_date, meal_type, status FROM reservations WHERE id = ANY($1::int[])`,
+      `SELECT id, meal_plan_date::text, meal_type, status FROM reservations WHERE id = ANY($1::int[])`,
       [resolutions.map(r => r.id)]
     );
     
@@ -150,7 +150,7 @@ router.post('/resolve-group', async (req, res) => {
     }
 
     // Ensure all reservations are from the same group (same date + meal_type)
-    const dates = new Set(reservationChecks.map(r => r.meal_plan_date.toISOString ? r.meal_plan_date.toISOString().slice(0,10) : r.meal_plan_date));
+    const dates = new Set(reservationChecks.map(r => typeof r.meal_plan_date === 'string' ? r.meal_plan_date : r.meal_plan_date.toISOString().slice(0,10)));
     const types = new Set(reservationChecks.map(r => r.meal_type));
     if (dates.size > 1 || types.size > 1) {
       return res.status(400).json({ error: 'All reservations must be from the same date and meal type' });

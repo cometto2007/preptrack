@@ -58,7 +58,7 @@ export default function DinnerPrompt({ prompt, onResolved }) {
 
   // Compute expiry date from today + default_expiry_days
   function computeExpiryDate() {
-    const days = Object.values(expiryDays)[0] ?? 90;
+    const days = expiryDays ?? 90;
     const now = new Date();
     const exp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
     return `${exp.getFullYear()}-${String(exp.getMonth() + 1).padStart(2, '0')}-${String(exp.getDate()).padStart(2, '0')}`;

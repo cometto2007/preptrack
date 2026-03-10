@@ -58,7 +58,7 @@ router.get('/callback', async (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>TickTick</title></head><body>
       <p style="font-family:sans-serif;padding:2rem">${msg}</p>
       <script>
-        try { window.opener.postMessage({ type: 'ticktick-oauth', result: '${result}' }, '*'); } catch(e) {}
+        try { window.opener.postMessage({ type: 'ticktick-oauth', result: ${JSON.stringify(result)} }, '*'); } catch(e) {}
         window.close();
       </script>
     </body></html>`);
@@ -244,11 +244,8 @@ router.post('/shopping-list', async (req, res) => {
     }
 
     // Delegate to the batch endpoint with a single recipe
-    // Forward the portions parameter for scaling support
-    req.body = { recipes: [{ slug, recipeName, portions }] };
-    
-    // Use the batch handler directly instead of router.handle to avoid recursion
-    return handleShoppingListBatch(req, res);
+    const syntheticReq = { ...req, body: { recipes: [{ slug, recipeName, portions }] } };
+    return handleShoppingListBatch(syntheticReq, res);
   } catch (err) {
     console.error('[ticktick] shopping-list error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to add to shopping list' });

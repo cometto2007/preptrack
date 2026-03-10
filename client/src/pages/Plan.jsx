@@ -123,14 +123,11 @@ function SlotRow({ slot, isPast }) {
                 title={
                   isPast ? 'Past day'
                   : listStatus === 'ok' ? 'Added to shopping list!'
-                  : listStatus === 'error' ? 'Failed — is TickTick configured in Settings?'
                   : 'Add ingredients to TickTick shopping list'
                 }
                 className={`flex items-center justify-center w-12 h-12 rounded transition-colors border ${
                   listStatus === 'ok'
                     ? 'bg-green-900/30 border-green-700 text-green-400'
-                    : listStatus === 'error'
-                    ? 'bg-red-900/30 border-red-700 text-red-400'
                     : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-primary hover:border-primary/40'
                 } disabled:opacity-50`}
               >
@@ -140,9 +137,6 @@ function SlotRow({ slot, isPast }) {
                 <span className="text-[11px] font-semibold text-green-400 whitespace-nowrap">
                   +{listCounts.added}{listCounts.merged > 0 ? ` / ~${listCounts.merged}` : ''}
                 </span>
-              )}
-              {listStatus === 'error' && (
-                <span className="text-[11px] font-semibold text-red-400 whitespace-nowrap">Failed</span>
               )}
             </div>
           )}
