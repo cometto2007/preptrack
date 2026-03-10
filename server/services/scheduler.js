@@ -26,8 +26,10 @@ function dayOfWeek(dateStr) {
 /**
  * Afternoon job: checks tomorrow's lunch plan.
  * Creates one reservation per recipe in the grouped meal + sends push.
+ * Only creates reservations if at least one recipe has freezer stock.
  */
 async function runLunchPrompt() {
+  let client;
   try {
     const tomorrow = addDays(localDateStr(), 1);
     const dow = dayOfWeek(tomorrow);
@@ -47,13 +49,6 @@ async function runLunchPrompt() {
     );
     if (overrideRows[0]?.override_type === 'disabled') return;
 
-    // Skip if any reservations already exist for tomorrow lunch
-    const { rows: existing } = await pool.query(
-      `SELECT id FROM reservations WHERE meal_plan_date = $1 AND meal_type = 'lunch' AND status = 'pending'`,
-      [tomorrow]
-    );
-    if (existing.length) return;
-
     // Fetch Mealie plan and group entries for tomorrow
     let planEntries = [];
     try {
@@ -66,8 +61,8 @@ async function runLunchPrompt() {
     const lunchGroup = groups.find(g => g.mealType === 'lunch');
     if (!lunchGroup || lunchGroup.recipes.length === 0) return;
 
-    // For each recipe, find the PrepTrack meal and create a reservation
-    const reservedNames = [];
+    // First pass: check which recipes have PrepTrack meals and freezer stock
+    const recipeData = [];
     let anyStocked = false;
 
     for (const recipe of lunchGroup.recipes) {
@@ -80,23 +75,50 @@ async function runLunchPrompt() {
         [recipe.slug]
       );
       const meal = mealRows[0];
-      if (!meal) continue;
-
-      const { rows: resRows } = await pool.query(
-        `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
-         VALUES ($1, $2, 'lunch', $3)
-         ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
-         RETURNING id`,
-        [meal.id, tomorrow, recipe.quantity]
-      );
-      if (!resRows.length) continue; // conflict — already exists
-
-      reservedNames.push(meal.name);
+      if (!meal) {
+        console.log(`[scheduler] Lunch: No PrepTrack meal found for recipe "${recipe.name}" (${recipe.slug})`);
+        continue;
+      }
       if (meal.stock > 0) anyStocked = true;
+      recipeData.push({ meal, recipe, stock: meal.stock });
     }
 
-    if (reservedNames.length === 0) return;
-    if (!anyStocked) return; // nothing to defrost
+    // Skip if no recipes tracked OR nothing in freezer
+    if (recipeData.length === 0) return;
+    if (!anyStocked) {
+      console.log(`[scheduler] Lunch: No freezer stock for ${tomorrow}, skipping`);
+      return;
+    }
+
+    // Second pass: create reservations in a transaction
+    // Only create reservations for recipes that don't already have one
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const reservedNames = [];
+    try {
+      for (const { meal, recipe } of recipeData) {
+        const { rows: resRows } = await client.query(
+          `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
+           VALUES ($1, $2, 'lunch', $3)
+           ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
+           RETURNING id`,
+          [meal.id, tomorrow, recipe.quantity]
+        );
+        if (resRows.length) {
+          reservedNames.push(meal.name);
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+      client = null;
+    }
+
+    if (reservedNames.length === 0) return; // All already existed
 
     const mealList = reservedNames.join(' + ');
     await sendToAll({
@@ -107,6 +129,10 @@ async function runLunchPrompt() {
 
     console.log(`[scheduler] Lunch prompt created for ${tomorrow}: ${mealList}`);
   } catch (err) {
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
+    }
     console.error('[scheduler] Lunch prompt error:', err.message);
   }
 }
@@ -116,6 +142,7 @@ async function runLunchPrompt() {
  * Creates one reservation per recipe in the grouped meal + sends push.
  */
 async function runDinnerPrompt() {
+  let client;
   try {
     const today = localDateStr();
     const dow = dayOfWeek(today);
@@ -135,13 +162,6 @@ async function runDinnerPrompt() {
     );
     if (overrideRows[0]?.override_type === 'disabled') return;
 
-    // Skip if any reservations already exist for tonight dinner
-    const { rows: existing } = await pool.query(
-      `SELECT id FROM reservations WHERE meal_plan_date = $1 AND meal_type = 'dinner' AND status = 'pending'`,
-      [today]
-    );
-    if (existing.length) return;
-
     // Fetch Mealie plan and group entries for today
     let planEntries = [];
     try {
@@ -154,7 +174,8 @@ async function runDinnerPrompt() {
     const dinnerGroup = groups.find(g => g.mealType === 'dinner');
     if (!dinnerGroup || dinnerGroup.recipes.length === 0) return;
 
-    const reservedNames = [];
+    // First pass: collect recipe data and check for existing reservations
+    const recipeData = [];
     let anyStocked = false;
 
     for (const recipe of dinnerGroup.recipes) {
@@ -167,22 +188,44 @@ async function runDinnerPrompt() {
         [recipe.slug]
       );
       const meal = mealRows[0];
-      if (!meal) continue;
-
-      const { rows: resRows } = await pool.query(
-        `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
-         VALUES ($1, $2, 'dinner', $3)
-         ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
-         RETURNING id`,
-        [meal.id, today, recipe.quantity]
-      );
-      if (!resRows.length) continue;
-
-      reservedNames.push(meal.name);
+      if (!meal) {
+        console.log(`[scheduler] Dinner: No PrepTrack meal found for recipe "${recipe.name}" (${recipe.slug})`);
+        continue;
+      }
       if (meal.stock > 0) anyStocked = true;
+      recipeData.push({ meal, recipe, stock: meal.stock });
     }
 
-    if (reservedNames.length === 0) return;
+    if (recipeData.length === 0) return;
+
+    // Second pass: create reservations in a transaction
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const reservedNames = [];
+    try {
+      for (const { meal, recipe } of recipeData) {
+        const { rows: resRows } = await client.query(
+          `INSERT INTO reservations (meal_id, meal_plan_date, meal_type, planned_quantity)
+           VALUES ($1, $2, 'dinner', $3)
+           ON CONFLICT (meal_plan_date, meal_type, meal_id) DO NOTHING
+           RETURNING id`,
+          [meal.id, today, recipe.quantity]
+        );
+        if (resRows.length) {
+          reservedNames.push(meal.name);
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+      client = null;
+    }
+
+    if (reservedNames.length === 0) return; // All already existed
 
     const mealList = reservedNames.join(' + ');
     const stockNote = anyStocked ? '' : ' (no freezer stock)';
@@ -194,6 +237,10 @@ async function runDinnerPrompt() {
 
     console.log(`[scheduler] Dinner prompt created for ${today}: ${mealList}`);
   } catch (err) {
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
+    }
     console.error('[scheduler] Dinner prompt error:', err.message);
   }
 }

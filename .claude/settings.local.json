@@ -12,7 +12,14 @@
       "Read(//tmp/**)",
       "Bash(gemini:*)",
       "Bash(codex review:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebSearch",
+      "Bash(npm run:*)",
+      "Bash(lsof:*)",
+      "Bash(DATABASE_URL=postgresql://preptrack@localhost:5432/preptrack node:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(kimi:*)"
     ]
   }
 }

@@ -233,22 +233,49 @@ async function saveShoppingState(taskId, projectId, itemMap, createdAt) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/ticktick/shopping-list
-// Body: { slug, recipeName }
+// POST /api/ticktick/shopping-list (Legacy - single recipe)
+// Body: { slug, recipeName, portions? }
 // ---------------------------------------------------------------------------
 router.post('/shopping-list', async (req, res) => {
   try {
-    const { slug, recipeName } = req.body;
+    const { slug, recipeName, portions } = req.body;
     if (!slug && !recipeName) {
       return res.status(400).json({ error: 'slug or recipeName required' });
+    }
+
+    // Delegate to the batch endpoint with a single recipe
+    // Forward the portions parameter for scaling support
+    req.body = { recipes: [{ slug, recipeName, portions }] };
+    
+    // Use the batch handler directly instead of router.handle to avoid recursion
+    return handleShoppingListBatch(req, res);
+  } catch (err) {
+    console.error('[ticktick] shopping-list error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to add to shopping list' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/ticktick/shopping-list-batch (v2 - multi-recipe with scaling)
+// Body: {
+//   recipes: [
+//     { slug, recipeName, portions }
+//   ]
+// }
+// portions: null = use full recipe yield (no scaling)
+// ---------------------------------------------------------------------------
+async function handleShoppingListBatch(req, res) {
+  try {
+    const { recipes } = req.body;
+    if (!Array.isArray(recipes) || recipes.length === 0) {
+      return res.status(400).json({ error: 'recipes must be a non-empty array' });
     }
 
     // Load TickTick credentials + shopping list state from settings
     const { rows } = await pool.query(
       `SELECT key, value FROM settings WHERE key IN (
         'ticktick_api_token', 'ticktick_list_id',
-        'ticktick_shopping_task_id', 'ticktick_shopping_project_id', 'ticktick_shopping_item_map', 'ticktick_shopping_created_at',
-        'ticktick_shopping_created_at'
+        'ticktick_shopping_task_id', 'ticktick_shopping_project_id', 'ticktick_shopping_item_map', 'ticktick_shopping_created_at'
       )`
     );
     const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
@@ -281,21 +308,9 @@ router.post('/shopping-list', async (req, res) => {
       itemMap = {};
     }
 
-    // Fetch recipe ingredients from Mealie
-    let title = recipeName || slug;
-    let rawIngredients = [];
-    if (slug) {
-      try {
-        const recipe = await mealieSync.getRecipe(slug);
-        title = recipe.name || title;
-        rawIngredients = recipe.recipeIngredient || recipe.recipe_ingredient || [];
-      } catch {
-        // Mealie unavailable — add a note-only item
-        rawIngredients = [];
-      }
-    }
-
     // Check if the stored task still exists and whether it was completed
+    // Also preserve item statuses from the existing task
+    const statusById = {};
     if (taskId && projectId) {
       try {
         const existing = await getTask(token, projectId, taskId);
@@ -305,69 +320,128 @@ router.post('/shopping-list', async (req, res) => {
         } else if (existing.status === 2) {
           // Task was completed — reuse the task but clear the ingredient list
           itemMap = {};
+        } else {
+          // Task exists - preserve item statuses
+          if (existing.items) {
+            existing.items.forEach(item => {
+              statusById[item.id] = item.status;
+            });
+          }
         }
-      } catch {
-        // Can't reach TickTick — proceed optimistically with stored state
+      } catch (err) {
+        console.warn('[ticktick] Failed to fetch existing task from TickTick:', err.message);
+        // Proceed optimistically with stored state
       }
     }
 
-    const statusById = {};
-
-    // Aggregate new ingredients into the item map.
-    // processedThisRequest tracks (ingredientKey|unit) pairs seen in this single API call
-    // so the same food+unit from one recipe is only counted once per tap, even if the
-    // recipe lists it twice. Each tap of the cart button always adds quantities (allowing
-    // deliberate double-adding for recipes needed twice in a week).
+    // Aggregate ingredients from all recipes with scaling
     let added = 0;
     let merged = 0;
-    const processedThisRequest = new Set();
 
-    for (const ing of rawIngredients) {
-      const key = ingredientKey(ing);
-      const foodName = ing.food?.name || ing.display || ing.note || '';
-      if (!foodName && !ing.display && !ing.note) continue;
-
-      const qty  = typeof ing.quantity === 'number' ? ing.quantity : null;
-      const unit = ing.unit?.name || null;
-      const requestKey = `${key}|${unit || ''}`;
-
-      // Skip duplicate (food + unit) entries within the same recipe
-      if (processedThisRequest.has(requestKey)) continue;
-      processedThisRequest.add(requestKey);
-
-      if (itemMap[key]) {
-        const entry = itemMap[key];
-        const existing = entry.amounts.find(a => (a.unit || '') === (unit || ''));
-        if (existing) {
-          if (qty != null && existing.qty != null) existing.qty += qty;
-        } else {
-          entry.amounts.push({ qty, unit });
+    for (const { slug, recipeName, portions } of recipes) {
+      // Handle recipeName-only entries (no slug) - add as note items
+      let title = recipeName || slug;
+      
+      if (!slug) {
+        // No slug - add a plain note item
+        const noteKey = `note|${title.toLowerCase().slice(0, 60)}`;
+        if (!itemMap[noteKey]) {
+          itemMap[noteKey] = {
+            id: crypto.randomBytes(4).toString('hex'),
+            amounts: [],
+            name: title,
+            sources: [title],
+          };
+          added++;
         }
-        if (!entry.sources.includes(title)) entry.sources.push(title);
-        merged++;
-      } else {
-        itemMap[key] = {
-          id: crypto.randomBytes(4).toString('hex'),
-          amounts: [{ qty, unit }],
-          name: foodName,
-          category: inferCategory(ing),
-          sources: [title],
-        };
-        added++;
+        continue;
       }
-    }
 
-    // If no structured ingredients, add a plain note item
-    if (rawIngredients.length === 0) {
-      const key = `note|${title.toLowerCase().slice(0, 60)}`;
-      if (!itemMap[key]) {
-        itemMap[key] = {
-          id: crypto.randomBytes(4).toString('hex'),
-          amounts: [],
-          name: title,
-          sources: [title],
-        };
-        added++;
+      // Fetch recipe from Mealie to get ingredients and recipeServings
+      let rawIngredients = [];
+      let recipeServings = null;
+      
+      try {
+        const recipe = await mealieSync.getRecipe(slug);
+        title = recipe.name || title;
+        rawIngredients = recipe.recipeIngredient || recipe.recipe_ingredient || [];
+        recipeServings = recipe.recipeServings || recipe.recipe_servings || recipe.recipe_yield || null;
+      } catch (err) {
+        console.warn(`[ticktick] Failed to fetch recipe "${slug}" from Mealie:`, err.message);
+        const noteKey = `note|${title.toLowerCase().slice(0, 60)}`;
+        if (!itemMap[noteKey]) {
+          itemMap[noteKey] = {
+            id: crypto.randomBytes(4).toString('hex'),
+            amounts: [],
+            name: title,
+            sources: [title],
+          };
+          added++;
+        }
+        continue;
+      }
+
+      // Calculate scale factor
+      // portions: null = use full recipe (scale = 1.0)
+      // portions: number = scale = portions / recipeServings
+      let scaleFactor = 1.0;
+      if (portions != null && recipeServings != null && recipeServings > 0) {
+        scaleFactor = portions / recipeServings;
+      }
+
+      // Per-recipe dedup: prevents double-counting if Mealie has duplicate ingredient rows
+      // Reset for each recipe so intentionally adding the same recipe twice still works
+      const seenThisRecipe = new Set();
+
+      for (const ing of rawIngredients) {
+        const key = ingredientKey(ing);
+        const foodName = ing.food?.name || ing.display || ing.note || '';
+        if (!foodName && !ing.display && !ing.note) continue;
+
+        // Get base quantity and scale it
+        const baseQty = typeof ing.quantity === 'number' ? ing.quantity : null;
+        const scaledQty = baseQty != null ? baseQty * scaleFactor : null;
+        const unit = ing.unit?.name || null;
+        
+        // Skip duplicate (food + unit) entries within the same recipe
+        const dedupKey = `${key}|${unit || ''}`;
+        if (seenThisRecipe.has(dedupKey)) continue;
+        seenThisRecipe.add(dedupKey);
+
+        if (itemMap[key]) {
+          const entry = itemMap[key];
+          const existing = entry.amounts.find(a => (a.unit || '') === (unit || ''));
+          if (existing) {
+            if (scaledQty != null && existing.qty != null) existing.qty += scaledQty;
+          } else {
+            entry.amounts.push({ qty: scaledQty, unit });
+          }
+          if (!entry.sources.includes(title)) entry.sources.push(title);
+          merged++;
+        } else {
+          itemMap[key] = {
+            id: crypto.randomBytes(4).toString('hex'),
+            amounts: [{ qty: scaledQty, unit }],
+            name: foodName,
+            category: inferCategory(ing),
+            sources: [title],
+          };
+          added++;
+        }
+      }
+
+      // If no structured ingredients, add a plain note item
+      if (rawIngredients.length === 0) {
+        const noteKey = `note|${title.toLowerCase().slice(0, 60)}`;
+        if (!itemMap[noteKey]) {
+          itemMap[noteKey] = {
+            id: crypto.randomBytes(4).toString('hex'),
+            amounts: [],
+            name: title,
+            sources: [title],
+          };
+          added++;
+        }
       }
     }
 
@@ -393,8 +467,9 @@ router.post('/shopping-list', async (req, res) => {
     if (taskId) {
       try {
         savedTask = await updateTask(token, taskId, updateBody);
-      } catch {
-        // Task was permanently deleted — fall through to create a fresh one
+      } catch (err) {
+        console.warn('[ticktick] Failed to update TickTick task:', err.message);
+        // Task was permanently deleted or update failed — fall through to create a fresh one
         taskId = null;
         projectId = null;
         itemMap = {};
@@ -419,10 +494,13 @@ router.post('/shopping-list', async (req, res) => {
 
     res.json({ ok: true, added, merged });
   } catch (err) {
-    console.error('[ticktick] shopping-list error:', err.message);
+    console.error('[ticktick] shopping-list-batch error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to add to shopping list' });
   }
-});
+}
+
+// Route handler for the batch endpoint
+router.post('/shopping-list-batch', handleShoppingListBatch);
 
 // POST /api/ticktick/reset-shopping-list — clear persisted task state so next add creates a fresh task
 router.post('/reset-shopping-list', async (req, res) => {

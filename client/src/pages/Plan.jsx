@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMealiePlan } from '../hooks/useMealiePlan';
 import { localDateStr, formatDateShort } from '../utils/dates';
 import { ticktickApi } from '../services/api';
+import ShoppingListOverlay from '../components/shared/ShoppingListOverlay';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -81,37 +82,23 @@ function SlotRow({ slot, isPast }) {
   const hasRecipes = slot.recipes && slot.recipes.length > 0;
   const missingRecipes = hasRecipes ? slot.recipes.filter(r => r.status === 'missing') : [];
 
-  const [adding, setAdding] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [listStatus, setListStatus] = useState(null);
   const [listCounts, setListCounts] = useState(null);
 
-  async function handleShoppingList() {
-    setAdding(true);
-    setListStatus(null);
-    setListCounts(null);
-    try {
-      let totalAdded = 0;
-      let totalMerged = 0;
-      const recipesToAdd = hasRecipes
-        ? slot.recipes.filter(r => r.status === 'missing')
-        : [];
-      // If nothing specific is missing, add all planned recipes
-      const targets = recipesToAdd.length > 0 ? recipesToAdd : (slot.recipes || []);
-      for (const recipe of targets) {
-        const result = await ticktickApi.addToShoppingList(recipe.slug, recipe.name);
-        totalAdded += result.added ?? 0;
-        totalMerged += result.merged ?? 0;
-      }
-      setListCounts({ added: totalAdded, merged: totalMerged });
-      setListStatus('ok');
-      setTimeout(() => { setListStatus(null); setListCounts(null); }, 4000);
-    } catch (err) {
-      console.error('[Plan] shopping list error:', err);
-      setListStatus('error');
-      setTimeout(() => setListStatus(null), 4000);
-    } finally {
-      setAdding(false);
-    }
+  function handleShoppingList() {
+    // Open the selection overlay instead of directly adding
+    setShowOverlay(true);
+  }
+
+  function handleAdded(result) {
+    setListCounts({ added: result.added ?? 0, merged: result.merged ?? 0 });
+    setListStatus('ok');
+    setTimeout(() => { setListStatus(null); setListCounts(null); }, 4000);
+  }
+
+  function handleOverlayClose() {
+    setShowOverlay(false);
   }
 
   return (
@@ -132,7 +119,7 @@ function SlotRow({ slot, isPast }) {
             <div className="flex flex-col items-end gap-1">
               <button
                 onClick={handleShoppingList}
-                disabled={adding || isPast}
+                disabled={isPast}
                 title={
                   isPast ? 'Past day'
                   : listStatus === 'ok' ? 'Added to shopping list!'
@@ -190,6 +177,22 @@ function SlotRow({ slot, isPast }) {
             <RecipeRow key={recipe.slug ?? recipe.recipeId ?? recipe.name} recipe={recipe} />
           ))}
         </div>
+      )}
+
+      {/* Shopping List Selection Overlay */}
+      {showOverlay && (
+        <ShoppingListOverlay
+          recipes={slot.recipes.map(r => ({
+            slug: r.slug,
+            name: r.name,
+            recipeServings: r.recipeServings,
+            imageUrl: r.recipeId ? `/api/mealie/recipe-image/${r.recipeId}` : null,
+            quantity: r.quantity || 1,
+            status: r.status,
+          }))}
+          onClose={handleOverlayClose}
+          onAdded={handleAdded}
+        />
       )}
     </div>
   );

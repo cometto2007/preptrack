@@ -131,6 +131,32 @@ router.post('/resolve-group', async (req, res) => {
 
   let client;
   try {
+    // Validate that all resolutions are for pending reservations
+    // and that they belong to the same date/meal_type group
+    const { rows: reservationChecks } = await pool.query(
+      `SELECT id, meal_plan_date, meal_type, status FROM reservations WHERE id = ANY($1::int[])`,
+      [resolutions.map(r => r.id)]
+    );
+    
+    if (reservationChecks.length !== resolutions.length) {
+      const foundIds = new Set(reservationChecks.map(r => r.id));
+      const missing = resolutions.find(r => !foundIds.has(r.id));
+      return res.status(404).json({ error: `Reservation ${missing?.id} not found` });
+    }
+
+    const nonPending = reservationChecks.find(r => r.status !== 'pending');
+    if (nonPending) {
+      return res.status(409).json({ error: `Reservation ${nonPending.id} is not pending (status: ${nonPending.status})` });
+    }
+
+    // Ensure all reservations are from the same group (same date + meal_type)
+    const dates = new Set(reservationChecks.map(r => r.meal_plan_date.toISOString ? r.meal_plan_date.toISOString().slice(0,10) : r.meal_plan_date));
+    const types = new Set(reservationChecks.map(r => r.meal_type));
+    if (dates.size > 1 || types.size > 1) {
+      return res.status(400).json({ error: 'All reservations must be from the same date and meal type' });
+    }
+
+    // Proceed with transaction
     client = await pool.connect();
     await client.query('BEGIN');
 
@@ -160,7 +186,10 @@ router.post('/resolve-group', async (req, res) => {
       );
 
       if (r.action === 'defrost' || r.action === 'used_freezer') {
-        const qty = Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10);
+        // Default to planned_quantity if portions not provided
+        const qty = r.portions != null 
+          ? (Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10))
+          : reservation.planned_quantity;
         if (!Number.isInteger(qty) || qty <= 0) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: `portions must be a positive integer for reservation ${r.id}` });
@@ -172,7 +201,10 @@ router.post('/resolve-group', async (req, res) => {
           return res.status(400).json({ error: stockErr.message });
         }
       } else if (r.action === 'froze_portions' || r.action === 'ate_and_froze') {
-        const qty = Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10);
+        // Default to planned_quantity if portions not provided
+        const qty = r.portions != null 
+          ? (Number.isInteger(r.portions) ? r.portions : parseInt(r.portions, 10))
+          : reservation.planned_quantity;
         if (!Number.isInteger(qty) || qty <= 0) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: `portions must be a positive integer for reservation ${r.id}` });
