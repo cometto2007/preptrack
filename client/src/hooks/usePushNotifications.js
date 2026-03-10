@@ -9,13 +9,12 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 /**
- * Returns { supported, permission, subscribed, currentEndpoint, subscribe, unsubscribe, loading, error }
+ * Returns { supported, permission, subscribed, subscribe, unsubscribe, loading, error }
  */
 export function usePushNotifications() {
   const supported = 'serviceWorker' in navigator && 'PushManager' in window;
   const [permission, setPermission] = useState(supported ? Notification.permission : 'denied');
   const [subscribed, setSubscribed] = useState(false);
-  const [currentEndpoint, setCurrentEndpoint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -25,7 +24,6 @@ export function usePushNotifications() {
     navigator.serviceWorker.ready.then(reg => {
       reg.pushManager.getSubscription().then(sub => {
         setSubscribed(!!sub);
-        setCurrentEndpoint(sub?.endpoint || null);
       });
     });
   }, [supported]);
@@ -71,7 +69,6 @@ export function usePushNotifications() {
       const { endpoint, keys } = sub.toJSON();
       await notificationsApi.subscribe({ endpoint, keys });
       setSubscribed(true);
-      setCurrentEndpoint(endpoint || null);
     } catch (err) {
       console.error('[push] subscribe failed:', err.message);
       const msg = err?.message || 'Failed to enable notifications';
@@ -103,7 +100,6 @@ export function usePushNotifications() {
         await sub.unsubscribe();
       }
       setSubscribed(false);
-      setCurrentEndpoint(null);
     } catch (err) {
       console.error('[push] unsubscribe failed:', err.message);
       setError(err.message || 'Failed to disable notifications');
@@ -112,5 +108,5 @@ export function usePushNotifications() {
     }
   }, [supported]);
 
-  return { supported, permission, subscribed, currentEndpoint, subscribe, unsubscribe, loading, error };
+  return { supported, permission, subscribed, subscribe, unsubscribe, loading, error };
 }

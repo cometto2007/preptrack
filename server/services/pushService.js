@@ -15,26 +15,6 @@ if (VAPID_PUBLIC && VAPID_PRIVATE && VAPID_SUBJECT) {
   console.warn('[push] VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT must all be set — push notifications disabled');
 }
 
-async function sendToSubscriptionRow(sub, payload) {
-  if (!vapidConfigured) return { attempted: 0, sent: 0, failed: 0, removed: 0 };
-  const json = JSON.stringify(payload);
-  const subscription = {
-    endpoint: sub.endpoint,
-    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-  };
-  try {
-    await webpush.sendNotification(subscription, json);
-    return { attempted: 1, sent: 1, failed: 0, removed: 0 };
-  } catch (err) {
-    if (err.statusCode === 410 || err.statusCode === 404) {
-      await pool.query('DELETE FROM push_subscriptions WHERE id = $1', [sub.id]).catch(() => {});
-      return { attempted: 1, sent: 0, failed: 1, removed: 1 };
-    }
-    console.error(`[push] Failed to send to ${sub.endpoint}:`, err.message);
-    return { attempted: 1, sent: 0, failed: 1, removed: 0 };
-  }
-}
-
 /**
  * Send a push notification to all stored subscriptions.
  * Payload: { title, body, url, actions? }
@@ -83,4 +63,4 @@ async function sendToAll(payload) {
   return { attempted: rows.length, sent, failed, removed };
 }
 
-module.exports = { sendToAll, sendToSubscriptionRow, vapidPublicKey: VAPID_PUBLIC, vapidConfigured };
+module.exports = { sendToAll, vapidPublicKey: VAPID_PUBLIC, vapidConfigured };

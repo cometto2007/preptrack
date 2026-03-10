@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/connection');
-const { vapidPublicKey, vapidConfigured, sendToAll, sendToSubscriptionRow } = require('../services/pushService');
+const { vapidPublicKey, vapidConfigured, sendToAll } = require('../services/pushService');
 
 // GET /api/notifications/pending — open reservations grouped by date+meal_type
 router.get('/pending', async (req, res) => {
@@ -106,53 +106,6 @@ router.post('/unsubscribe', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to remove subscription' });
-  }
-});
-
-// POST /api/notifications/test — send an immediate test push to all subscribers
-router.post('/test', async (req, res) => {
-  try {
-    if (!vapidConfigured) {
-      return res.status(503).json({ error: 'Push notifications not configured on server' });
-    }
-
-    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint.trim() : '';
-    if (endpoint) {
-      const { rows: subRows } = await pool.query(
-        'SELECT id, endpoint, keys_p256dh, keys_auth FROM push_subscriptions WHERE endpoint = $1 LIMIT 1',
-        [endpoint]
-      );
-      if (!subRows.length) {
-        return res.status(404).json({ error: 'No push subscription found for this device' });
-      }
-      const stats = await sendToSubscriptionRow(subRows[0], {
-        title: 'PrepTrack Test Notification',
-        body: 'Push is working on this device.',
-        url: '/settings',
-        actions: [{ action: 'open', title: 'Open PrepTrack' }],
-      });
-      return res.json({ ok: true, target: 'current_device', sent_to: 1, stats });
-    }
-
-    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM push_subscriptions');
-    const subscriptionCount = rows[0]?.count || 0;
-    if (subscriptionCount === 0) {
-      return res.status(400).json({ error: 'No push subscriptions found on this server' });
-    }
-
-    const stats = await sendToAll({
-      title: 'PrepTrack Test Notification',
-      body: 'Push is working. This is a manual test.',
-      url: '/settings',
-      actions: [
-        { action: 'open', title: 'Open PrepTrack' },
-      ],
-    });
-
-    res.json({ ok: true, sent_to: subscriptionCount, stats });
-  } catch (err) {
-    console.error('[notifications] test push error:', err.message);
-    res.status(500).json({ error: 'Failed to send test notification' });
   }
 });
 
