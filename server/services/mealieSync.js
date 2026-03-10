@@ -165,11 +165,13 @@ function groupMealPlanEntries(rawEntries) {
     if (group.recipeMap.has(slug)) {
       group.recipeMap.get(slug).quantity++;
     } else {
+      const recipeServings = entry.recipe.recipeServings ?? entry.recipe.recipe_servings ?? entry.recipe.recipe_yield ?? null;
       group.recipeMap.set(slug, {
         mealieId: entry.recipe.id || null,
         slug,
         name: entry.recipe.name || slug,
         quantity: 1,
+        recipeServings: Number.isFinite(Number(recipeServings)) ? Number(recipeServings) : null,
       });
     }
   }

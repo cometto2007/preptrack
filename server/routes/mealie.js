@@ -106,6 +106,28 @@ router.get('/meal-plan', async (req, res) => {
     groupedMap.set(`${g.date}:${g.mealType}`, g);
   }
 
+  // Ensure recipeServings is populated from recipe details when not present in meal-plan payload.
+  const servingsBySlug = {};
+  const slugsNeedingServings = Array.from(
+    new Set(
+      grouped.flatMap(g => g.recipes)
+        .filter(r => !Number.isFinite(r.recipeServings) || r.recipeServings <= 0)
+        .map(r => r.slug)
+    )
+  );
+  if (slugsNeedingServings.length > 0) {
+    await Promise.all(slugsNeedingServings.map(async (slug) => {
+      try {
+        const recipe = await mealieSync.getRecipe(slug);
+        const servings = recipe.recipeServings ?? recipe.recipe_servings ?? recipe.recipe_yield ?? null;
+        const parsed = Number(servings);
+        servingsBySlug[slug] = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      } catch {
+        servingsBySlug[slug] = null;
+      }
+    }));
+  }
+
   // Build slug -> PrepTrack meal lookup
   const slugToMeal = {};
   for (const meal of meals) {
@@ -166,11 +188,15 @@ router.get('/meal-plan', async (req, res) => {
         const ptMeal = slugToMeal[r.slug];
         const portions = ptMeal ? Number(ptMeal.total_portions) : 0;
         const status = recipeStatus(r.slug);
+        const recipeServings = (Number.isFinite(r.recipeServings) && r.recipeServings > 0)
+          ? r.recipeServings
+          : (servingsBySlug[r.slug] || null);
         return {
           slug: r.slug,
           name: r.name,
           recipeId: r.mealieId,
           quantity: r.quantity,
+          recipeServings,
           preptrackId: ptMeal ? ptMeal.id : null,
           portions,
           status,
