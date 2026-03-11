@@ -40,7 +40,7 @@ export default function AppShell({ children }) {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto md:pb-0 pb-16">
+        <main className="flex-1 overflow-y-auto md:pb-0 pb-16 md:px-6 lg:px-8 xl:px-10">
           {children}
         </main>
 

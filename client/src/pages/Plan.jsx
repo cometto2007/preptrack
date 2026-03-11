@@ -31,7 +31,7 @@ function statusBadge(status, portions) {
     return {
       label: 'Missing',
       note: 'Not in freezer',
-      cls: 'bg-rose-500/15 text-rose-300 border-rose-400/30',
+      cls: 'bg-[#e45757] text-white border-[#f07b7b]',
     };
   }
   return null;
@@ -89,11 +89,9 @@ function RecipeItem({ recipe, isPast, compact = false }) {
 }
 
 function MealCard({ dayDate, slot, isPast, compact = false }) {
-  const navigate = useNavigate();
   const [showOverlay, setShowOverlay] = useState(false);
   const [listStatus, setListStatus] = useState(null);
   const hasRecipes = slot.recipes && slot.recipes.length > 0;
-  const missingRecipes = hasRecipes ? slot.recipes.filter(r => r.status === 'missing') : [];
   const title = slot.type.charAt(0).toUpperCase() + slot.type.slice(1);
 
   function handleAddedLocal() {
@@ -141,19 +139,6 @@ function MealCard({ dayDate, slot, isPast, compact = false }) {
                 <ShoppingCart size={15} />
               </button>
             </>
-          )}
-          {hasRecipes && missingRecipes.length > 0 && !isPast && (
-            <button
-              onClick={() => navigate('/add', {
-                state: {
-                  name: missingRecipes[0].name || '',
-                  mealieSlug: missingRecipes[0].slug || null,
-                },
-              })}
-              className="h-8 px-2 rounded-md border border-primary/30 bg-primary/10 text-primary text-xs font-semibold inline-flex items-center gap-1"
-            >
-              <Plus size={12} /> Add
-            </button>
           )}
         </div>
       </div>
@@ -268,7 +253,7 @@ function Header() {
   return (
     <header className="h-16 md:h-20 border-b border-[#243b56] px-4 md:px-6 lg:px-8 flex items-center bg-[#22364f]/95 backdrop-blur-md sticky top-0 z-20">
       <div>
-        <h1 className="text-2xl md:text-4xl font-semibold tracking-tight">Plan</h1>
+        <h1 className="text-2xl md:text-4xl font-semibold tracking-tight">Meal Plan</h1>
         <p className="text-xs md:text-sm text-[#8ea3bb]">Review and add to freeze</p>
       </div>
     </header>
