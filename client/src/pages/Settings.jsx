@@ -194,7 +194,7 @@ export default function Settings() {
 
   // TickTick OAuth connect
   function handleConnectTickTick() {
-    const popup = window.open('/api/ticktick/auth', 'ticktick-oauth', 'width=620,height=720,noopener=no');
+    const popup = window.open('/api/ticktick/auth', 'ticktick-oauth', 'width=620,height=720,noopener');
     if (!popup) {
       alert('Popup was blocked — allow popups for this site and try again.');
       return;

@@ -2,14 +2,12 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
-  BookOpen,
   Settings,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/',         label: 'Dashboard', Icon: LayoutDashboard },
   { to: '/plan',     label: 'Meal Plan', Icon: Calendar },
-  { to: '/recipes',  label: 'Recipes',   Icon: BookOpen },
   { to: '/settings', label: 'Settings',  Icon: Settings },
 ];
 

@@ -350,7 +350,7 @@ function MealieLink({ slug, name, baseUrl }) {
   const safeBase = /^https?:\/\//i.test(baseUrl) ? baseUrl : '';
   return (
     <a
-      href={safeBase ? `${safeBase}/g/home/r/${slug}` : undefined}
+      href={safeBase ? `${safeBase}/g/home/r/${encodeURIComponent(slug)}` : undefined}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 p-4 bg-slate-800/30 rounded-xl border border-slate-800 hover:border-primary/40 transition-colors"
