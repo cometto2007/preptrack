@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { mealieApi } from '../services/api';
 import { useSettings } from '../hooks/useSettings';
+import AddToFreezerSheet from '../components/shared/AddToFreezerSheet';
 
 function SkeletonCard() {
   return (
@@ -17,10 +18,10 @@ function SkeletonCard() {
   );
 }
 
-function RecipeCard({ recipe, onClick, mealieUrl }) {
+function RecipeCard({ recipe, onClick }) {
   const [imgError, setImgError] = useState(false);
-  const imgSrc = mealieUrl && recipe.imageId && !imgError
-    ? `${mealieUrl}/api/media/recipes/${recipe.id}/images/min-original.webp`
+  const imgSrc = recipe.id && !imgError
+    ? `/api/mealie/recipe-image/${recipe.id}`
     : null;
 
   return (
@@ -56,6 +57,9 @@ export default function Recipes() {
   const mealieUrl = rawSettings?.mealie_url?.replace(/\/$/, '') || null;
 
   const [query, setQuery] = useState('');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetPrefillName, setSheetPrefillName] = useState('');
+  const [sheetPrefillSlug, setSheetPrefillSlug] = useState('');
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,9 +85,9 @@ export default function Recipes() {
   }, [query]);
 
   function handleCardClick(recipe) {
-    navigate(`/add?recipe=${encodeURIComponent(recipe.slug)}&name=${encodeURIComponent(recipe.name)}`, {
-      state: { mealieSlug: recipe.slug },
-    });
+    setSheetPrefillName(recipe.name);
+    setSheetPrefillSlug(recipe.slug);
+    setSheetOpen(true);
   }
 
   const isMealieNotConfigured = error && error.toLowerCase().includes('configured');
@@ -149,7 +153,6 @@ export default function Recipes() {
             key={recipe.id}
             recipe={recipe}
             onClick={() => handleCardClick(recipe)}
-            mealieUrl={mealieUrl}
           />
         ))}
 
@@ -168,6 +171,13 @@ export default function Recipes() {
           </div>
         )}
       </main>
+
+      <AddToFreezerSheet
+        isOpen={sheetOpen}
+        onClose={() => { setSheetOpen(false); setSheetPrefillName(''); setSheetPrefillSlug(''); }}
+        prefillName={sheetPrefillName}
+        prefillRecipeSlug={sheetPrefillSlug}
+      />
     </div>
   );
 }

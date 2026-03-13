@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 import { useMeals } from '../hooks/useMeals';
 import { mealsApi, notificationsApi, categoriesApi } from '../services/api';
 import MealCard from '../components/shared/MealCard';
 import QuickCounter from '../components/shared/QuickCounter';
+import AddToFreezerSheet from '../components/shared/AddToFreezerSheet';
 import { getExpiryInfo } from '../components/shared/StatusBadge';
 import LunchPrompt from '../components/prompts/LunchPrompt';
 import DinnerPrompt from '../components/prompts/DinnerPrompt';
@@ -24,11 +24,15 @@ function SkeletonCard() {
 
 export default function Dashboard() {
   const { meals, loading, error, reload } = useMeals();
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [counterMeal, setCounterMeal] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetPrefill, setSheetPrefill] = useState('');
+
+  function openSheet(name = '') { setSheetPrefill(name); setSheetOpen(true); }
+  function handleSheetClose() { setSheetOpen(false); setSheetPrefill(''); reload(); }
   const [prompts, setPrompts] = useState([]);
   const [categories, setCategories] = useState([]);
 
@@ -202,7 +206,7 @@ export default function Dashboard() {
           {loading ? (
             <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
           ) : filtered.length === 0 ? (
-            <EmptyState search={search} filter={activeFilter} onAdd={() => navigate('/add', search.trim() ? { state: { name: search.trim() } } : undefined)} />
+            <EmptyState search={search} filter={activeFilter} onAdd={openSheet} />
           ) : (
             filtered.map(meal => (
               <MealCard
@@ -217,7 +221,7 @@ export default function Dashboard() {
 
       {/* FAB */}
       <button
-        onClick={() => navigate('/add')}
+        onClick={() => openSheet()}
         className="fixed bottom-20 right-4 md:bottom-6 z-30 size-14 bg-primary text-white rounded-full shadow-lg shadow-primary/40 flex items-center justify-center active:scale-90 transition-transform"
       >
         <Plus size={28} />
@@ -241,6 +245,13 @@ export default function Dashboard() {
           {actionError}
         </div>
       )}
+
+      {/* Add to Freezer sheet */}
+      <AddToFreezerSheet
+        isOpen={sheetOpen}
+        onClose={handleSheetClose}
+        prefillName={sheetPrefill}
+      />
     </div>
   );
 }
@@ -270,12 +281,12 @@ function EmptyState({ search, filter, onAdd }) {
         </p>
       </div>
       {!isFiltered && (
-        <button onClick={onAdd} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
+        <button onClick={() => onAdd()} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
           Add First Meal
         </button>
       )}
       {hasSearch && (
-        <button onClick={onAdd} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
+        <button onClick={() => onAdd(search.trim())} className="px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm">
           Add &ldquo;{search.trim()}&rdquo; to freezer
         </button>
       )}

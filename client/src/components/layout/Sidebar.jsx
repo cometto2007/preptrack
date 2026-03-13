@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Calendar,
   BookOpen,
-  PlusCircle,
   Settings,
 } from 'lucide-react';
 
@@ -11,7 +10,6 @@ const navItems = [
   { to: '/',         label: 'Dashboard', Icon: LayoutDashboard },
   { to: '/plan',     label: 'Meal Plan', Icon: Calendar },
   { to: '/recipes',  label: 'Recipes',   Icon: BookOpen },
-  { to: '/add',      label: 'Add Item',  Icon: PlusCircle },
   { to: '/settings', label: 'Settings',  Icon: Settings },
 ];
 

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, CheckCircle, AlertCircle, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, CheckCircle, AlertCircle, ExternalLink, Trash2 } from 'lucide-react';
 import { useMeal } from '../hooks/useMeals';
 import { useSettings } from '../hooks/useSettings';
 import { mealsApi } from '../services/api';
 import QuickCounter from '../components/shared/QuickCounter';
+import AddToFreezerSheet from '../components/shared/AddToFreezerSheet';
 import { formatDate } from '../utils/dates';
 import { buildExpiryMap } from '../utils/expiry';
 
@@ -92,6 +93,7 @@ export default function ItemDetail() {
   const [counterMode, setCounterMode] = useState(null); // 'add' | 'remove' | null
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
 
@@ -268,11 +270,11 @@ export default function ItemDetail() {
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-slate-800">
           <button
-            onClick={() => navigate(`/add?edit=${id}`)}
+            onClick={() => setSheetOpen(true)}
             className="flex-1 py-3 px-4 bg-slate-800 font-bold rounded-lg hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
           >
-            <Pencil size={16} />
-            Edit Item
+            <Plus size={16} />
+            Add Batch
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
@@ -283,6 +285,13 @@ export default function ItemDetail() {
           </button>
         </div>
       </main>
+
+      {/* Add batch sheet */}
+      <AddToFreezerSheet
+        isOpen={sheetOpen}
+        onClose={() => { setSheetOpen(false); reload(); }}
+        prefillName={meal?.name}
+      />
 
       {/* Quick counter sheet */}
       {counterMode && (
@@ -338,9 +347,10 @@ export default function ItemDetail() {
 }
 
 function MealieLink({ slug, name, baseUrl }) {
+  const safeBase = /^https?:\/\//i.test(baseUrl) ? baseUrl : '';
   return (
     <a
-      href={`${baseUrl}/recipe/${slug}`}
+      href={safeBase ? `${safeBase}/recipe/${slug}` : undefined}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 p-4 bg-slate-800/30 rounded-xl border border-slate-800 hover:border-primary/40 transition-colors"

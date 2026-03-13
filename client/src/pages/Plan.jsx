@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMealiePlan } from '../hooks/useMealiePlan';
 import { localDateStr, formatDateShort } from '../utils/dates';
 import ShoppingListOverlay from '../components/shared/ShoppingListOverlay';
+import AddToFreezerSheet from '../components/shared/AddToFreezerSheet';
 
 function statusBadge(status, portions) {
   if (status === 'covered') {
@@ -44,8 +45,7 @@ function slotSubtitle(slot) {
   return `${count} recipe${count === 1 ? '' : 's'} planned`;
 }
 
-function RecipeItem({ recipe, isPast, compact = false }) {
-  const navigate = useNavigate();
+function RecipeItem({ recipe, isPast, compact = false, onAddToFreezer }) {
   const badge = statusBadge(recipe.status, recipe.portions);
 
   return (
@@ -73,12 +73,7 @@ function RecipeItem({ recipe, isPast, compact = false }) {
       </div>
       {recipe.status === 'missing' && !isPast && (
         <button
-          onClick={() => navigate('/add', {
-            state: {
-              name: recipe.name || '',
-              mealieSlug: recipe.slug || null,
-            },
-          })}
+          onClick={() => onAddToFreezer(recipe.name || '', recipe.slug || '')}
           className="h-7 px-2 rounded-md border border-[#243b56] bg-[#1f3249] text-[#dce7f3] text-xs font-semibold inline-flex items-center gap-1 hover:border-primary/50 hover:text-primary transition-colors"
         >
           <Plus size={12} /> Add
@@ -88,7 +83,7 @@ function RecipeItem({ recipe, isPast, compact = false }) {
   );
 }
 
-function MealCard({ dayDate, slot, isPast, compact = false }) {
+function MealCard({ dayDate, slot, isPast, compact = false, onAddToFreezer }) {
   const [showOverlay, setShowOverlay] = useState(false);
   const [listStatus, setListStatus] = useState(null);
   const hasRecipes = slot.recipes && slot.recipes.length > 0;
@@ -158,6 +153,7 @@ function MealCard({ dayDate, slot, isPast, compact = false }) {
               recipe={recipe}
               isPast={isPast}
               compact={compact}
+              onAddToFreezer={onAddToFreezer}
             />
           ))}
         </div>
@@ -181,7 +177,7 @@ function MealCard({ dayDate, slot, isPast, compact = false }) {
   );
 }
 
-function DaySectionMobile({ day, today }) {
+function DaySectionMobile({ day, today, onAddToFreezer }) {
   const isPast = day.date < today;
   const isToday = day.date === today;
   const hasAnyPlanned = day.slots.some(slot => slot.status !== 'off' && slot.status !== 'unplanned');
@@ -197,14 +193,14 @@ function DaySectionMobile({ day, today }) {
       </div>
       <div className="space-y-2.5">
         {day.slots.map(slot => (
-          <MealCard key={`${day.date}-${slot.type}`} dayDate={day.date} slot={slot} isPast={isPast} />
+          <MealCard key={`${day.date}-${slot.type}`} dayDate={day.date} slot={slot} isPast={isPast} onAddToFreezer={onAddToFreezer} />
         ))}
       </div>
     </section>
   );
 }
 
-function DaySectionDesktop({ day, today }) {
+function DaySectionDesktop({ day, today, onAddToFreezer }) {
   const isPast = day.date < today;
   const isToday = day.date === today;
   const hasAnyPlanned = day.slots.some(slot => slot.status !== 'off' && slot.status !== 'unplanned');
@@ -220,7 +216,7 @@ function DaySectionDesktop({ day, today }) {
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         {day.slots.map(slot => (
-          <MealCard key={`${day.date}-${slot.type}`} dayDate={day.date} slot={slot} isPast={isPast} compact />
+          <MealCard key={`${day.date}-${slot.type}`} dayDate={day.date} slot={slot} isPast={isPast} compact onAddToFreezer={onAddToFreezer} />
         ))}
       </div>
     </section>
@@ -355,6 +351,17 @@ export default function Plan() {
   const dayOptions = [7, 14, 30];
   const today = localDateStr();
 
+  const [sheetOpen, setSheetOpen]           = useState(false);
+  const [sheetPrefillName, setSheetPrefillName] = useState('');
+  const [sheetPrefillSlug, setSheetPrefillSlug] = useState('');
+
+  function openSheet(name = '', slug = '') {
+    setSheetPrefillName(name);
+    setSheetPrefillSlug(slug);
+    setSheetOpen(true);
+  }
+  function handleSheetClose() { setSheetOpen(false); setSheetPrefillName(''); setSheetPrefillSlug(''); }
+
   const summary = data?.summary ?? { total: 0, covered: 0, partial: 0, missing: 0 };
   const coveragePct = summary.total > 0 ? Math.round((summary.covered / summary.total) * 100) : 0;
 
@@ -417,17 +424,24 @@ export default function Plan() {
           <>
             <div className="space-y-5 md:hidden">
               {data.days.map(day => (
-                <DaySectionMobile key={day.date} day={day} today={today} />
+                <DaySectionMobile key={day.date} day={day} today={today} onAddToFreezer={openSheet} />
               ))}
             </div>
             <div className="hidden md:grid md:grid-cols-1 gap-4 lg:gap-5">
               {data.days.map(day => (
-                <DaySectionDesktop key={day.date} day={day} today={today} />
+                <DaySectionDesktop key={day.date} day={day} today={today} onAddToFreezer={openSheet} />
               ))}
             </div>
           </>
         )}
       </main>
+
+      <AddToFreezerSheet
+        isOpen={sheetOpen}
+        onClose={handleSheetClose}
+        prefillName={sheetPrefillName}
+        prefillRecipeSlug={sheetPrefillSlug}
+      />
     </div>
   );
 }
