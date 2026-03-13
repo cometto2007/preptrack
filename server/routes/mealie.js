@@ -175,14 +175,14 @@ router.get('/meal-plan', async (req, res) => {
         continue;
       }
 
-      totalEnabled++;
       const group = groupedMap.get(`${dateStr}:${slotType}`);
 
       if (!group || group.recipes.length === 0) {
         slots.push({ type: slotType, status: 'unplanned', recipes: [] });
-        missingCount++;
         continue;
       }
+
+      totalEnabled++;
 
       const recipes = group.recipes.map(r => {
         const ptMeal = slugToMeal[r.slug];

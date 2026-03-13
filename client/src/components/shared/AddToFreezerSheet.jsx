@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { mealsApi, mealieApi } from '../../services/api';
 import { useSettings } from '../../hooks/useSettings';
-import { localDateStr, formatDate, formatDateShort } from '../../utils/dates';
+import { localDateStr } from '../../utils/dates';
 import { buildExpiryMap } from '../../utils/expiry';
 
 const SHELF_PILLS = [1, 2, 3, 6];
@@ -76,7 +76,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
       .catch(() => {});
     if (prefillName)       setName(prefillName);
     if (prefillRecipeSlug) setMealieSlug(prefillRecipeSlug);
-    setTimeout(() => inputRef.current?.focus(), 350);
+    if (!prefillName) setTimeout(() => inputRef.current?.focus(), 350);
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mealie search on name change
@@ -142,6 +142,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     setName(recipe.name);
     setMealieSlug(recipe.slug);
     setCategory(recipe.recipeCategory?.[0]?.name || recipe.mealie_category_name || '');
+    if (recipe.recipeServings) setPortions(recipe.recipeServings);
     setShowSuggestions(false);
     setMealieRecipeSuggestions([]);
   }
@@ -200,7 +201,6 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     ...mealieRecipeSuggestions.map(r => ({ ...r, _type: 'mealie' })),
   ];
 
-  const isTodayFreeze = freezeDate === TODAY;
   const canSubmit     = name.trim() && !submitting;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -357,21 +357,13 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
             borderRadius: 12, overflow: 'hidden',
           }}>
             {/* Frozen date */}
-            <div
-              style={{ flex: 1, padding: '12px 14px', cursor: 'pointer', position: 'relative' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(148,163,184,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
+            <div style={{ flex: 1, padding: '12px 14px' }}>
               <div style={s.cellLabel}>Frozen</div>
-              <div style={s.cellValue}>
-                <span>{isTodayFreeze ? 'Today' : formatDateShort(freezeDate)}</span>
-                <span style={{ fontSize: 10, color: '#475569' }}>✎</span>
-              </div>
               <input
                 type="date"
                 value={freezeDate}
                 onChange={e => setFreezeDate(e.target.value)}
-                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                style={s.dateInput}
               />
             </div>
 
@@ -400,21 +392,13 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
             <div style={{ width: 1, background: 'rgba(148,163,184,0.08)', flexShrink: 0 }} />
 
             {/* Expiry date */}
-            <div
-              style={{ flex: 1, padding: '12px 14px', cursor: 'pointer', position: 'relative' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(148,163,184,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
+            <div style={{ flex: 1, padding: '12px 14px' }}>
               <div style={s.cellLabel}>Expires</div>
-              <div style={s.cellValue}>
-                <span style={{ fontSize: 13 }}>{expiryDate ? formatDate(expiryDate) : '—'}</span>
-                <span style={{ fontSize: 10, color: '#475569' }}>✎</span>
-              </div>
               <input
                 type="date"
                 value={expiryDate}
                 onChange={e => { setExpiryDate(e.target.value); setIsCustomExpiry(true); }}
-                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                style={s.dateInput}
               />
             </div>
           </div>
@@ -495,8 +479,9 @@ const s = {
     fontSize: 10, color: '#64748b', textTransform: 'uppercase',
     letterSpacing: '0.04em', marginBottom: 6, height: 13,
   },
-  cellValue: {
-    fontSize: 15, fontWeight: 600, color: '#f1f5f9',
-    display: 'flex', alignItems: 'center', gap: 6, height: 28,
+  dateInput: {
+    background: 'transparent', border: 'none', outline: 'none',
+    color: '#f1f5f9', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+    padding: 0, width: '100%', cursor: 'pointer', colorScheme: 'dark',
   },
 };

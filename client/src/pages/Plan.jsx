@@ -347,7 +347,7 @@ function ErrorBlock({ error }) {
 
 export default function Plan() {
   const [days, setDays] = useState(7);
-  const { data, loading, error } = useMealiePlan(days);
+  const { data, loading, error, reload } = useMealiePlan(days);
   const dayOptions = [7, 14, 30];
   const today = localDateStr();
 
@@ -360,7 +360,7 @@ export default function Plan() {
     setSheetPrefillSlug(slug);
     setSheetOpen(true);
   }
-  function handleSheetClose() { setSheetOpen(false); setSheetPrefillName(''); setSheetPrefillSlug(''); }
+  function handleSheetClose() { setSheetOpen(false); setSheetPrefillName(''); setSheetPrefillSlug(''); reload(); }
 
   const summary = data?.summary ?? { total: 0, covered: 0, partial: 0, missing: 0 };
   const coveragePct = summary.total > 0 ? Math.round((summary.covered / summary.total) * 100) : 0;

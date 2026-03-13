@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { ticktickApi } from '../../services/api';
 
@@ -24,6 +24,18 @@ export default function ShoppingListOverlay({ recipes, onClose, onAdded }) {
 }
 
 function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  function handleClose() {
+    setOpen(false);
+    setTimeout(onClose, 350);
+  }
+
   // Initialize selections - only check recipes with missing/low stock by default
   const [selections, setSelections] = useState(() => {
     return recipes.map(r => ({
@@ -106,7 +118,7 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
 
       const result = await ticktickApi.addToShoppingListBatch(recipesToAdd);
       onAdded(result);
-      onClose();
+      handleClose();
     } catch (err) {
       console.error('[ShoppingListOverlay] error:', err);
       setError(err.message || 'Failed to add to shopping list. Is TickTick configured?');
@@ -118,16 +130,29 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
   return (
     <>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]" 
-        onClick={onClose}
+      <div
         role="presentation"
+        onClick={handleClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 45,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          opacity: open ? 1 : 0,
+          transition: 'opacity 0.3s',
+        }}
       />
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-        <div 
+      {/* Sheet — outer container intercepts taps outside max-w-md */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 flex justify-center"
+        onClick={handleClose}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
           className="w-full max-w-md bg-bg-app rounded-t-2xl shadow-2xl border-t border-slate-800 overflow-hidden flex flex-col max-h-[85vh]"
+          style={{
+            transform: open ? 'translateY(0)' : 'translateY(100%)',
+            transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+          }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="shopping-list-title"
@@ -154,7 +179,7 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
                 aria-label="Close"
               >
@@ -291,7 +316,7 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
             </button>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full py-3 mt-2 text-slate-400 font-medium text-sm hover:text-slate-200 transition-colors"
             >
               Cancel

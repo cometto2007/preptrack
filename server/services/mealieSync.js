@@ -39,8 +39,7 @@ async function getSettings() {
 async function mealieRequest(url, apiKey, path, params = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullPath = `${path}${qs ? '?' + qs : ''}`;
-  // Include a hash of apiKey in cache key so rotating the key invalidates cached responses
-  const cacheKey = `${url}|${apiKey.slice(-8)}${fullPath}`;
+  const cacheKey = `${url}|${apiKey}${fullPath}`;
 
   const cached = cacheGet(cacheKey);
   if (cached !== null) return cached;
@@ -84,6 +83,9 @@ async function searchRecipes(q = '', page = 1, perPage = 20) {
     name: r.name,
     description: r.description || '',
     imageId: r.id, // Mealie uses recipe id for image path
+    recipeServings: Number.isFinite(Number(r.recipeServings)) && Number(r.recipeServings) > 0
+      ? Number(r.recipeServings)
+      : null,
     mealie_category_name: Array.isArray(r.recipeCategory) && r.recipeCategory.length > 0
       ? (r.recipeCategory[0].name || null)
       : null,
