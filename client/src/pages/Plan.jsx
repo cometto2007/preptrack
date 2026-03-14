@@ -5,6 +5,7 @@ import { useMealiePlan } from '../hooks/useMealiePlan';
 import { localDateStr, formatDateShort } from '../utils/dates';
 import ShoppingListOverlay from '../components/shared/ShoppingListOverlay';
 import AddToFreezerSheet from '../components/shared/AddToFreezerSheet';
+import PageHeader from '../components/layout/PageHeader';
 
 function statusBadge(status, portions) {
   if (status === 'covered') {
@@ -247,12 +248,11 @@ function DaySkeletonDesktop() {
 
 function Header() {
   return (
-    <header className="h-16 md:h-20 border-b border-[#243b56] px-4 md:px-6 lg:px-8 flex items-center bg-[#22364f]/95 backdrop-blur-md sticky top-0 z-20">
-      <div>
-        <h1 className="text-2xl md:text-4xl font-semibold tracking-tight">Meal Plan</h1>
-        <p className="text-xs md:text-sm text-[#8ea3bb]">Review and add to freeze</p>
-      </div>
-    </header>
+    <PageHeader
+      title="Meal Plan"
+      subtitle="Upcoming meals and freezer coverage"
+      sticky
+    />
   );
 }
 
@@ -331,7 +331,7 @@ function ErrorBlock({ error }) {
   return (
     <div className="p-4 rounded-xl bg-[#0c1724] border border-[#243b56] text-center">
       <p className="text-[#c6d4e2] text-sm mb-2">Could not load meal plan.</p>
-      {error.toLowerCase().includes('configured') ? (
+      {String(error).toLowerCase().includes('configured') ? (
         <p className="text-xs text-[#8ea3bb]">
           Connect Mealie in{' '}
           <button onClick={() => navigate('/settings')} className="text-primary underline">
@@ -390,7 +390,7 @@ export default function Plan() {
     <div className="flex flex-col min-h-full pb-24 md:pb-8">
       <Header />
 
-      <main className="flex-1 px-4 md:px-6 lg:px-8 pt-4 md:pt-6 pb-8 space-y-5 md:space-y-6 max-w-7xl w-full mx-auto">
+      <main className="flex-1 px-4 md:px-0 pb-8 space-y-5 md:space-y-6 max-w-7xl w-full mx-auto">
         <ControlsAndSummary
           dayOptions={dayOptions}
           days={days}

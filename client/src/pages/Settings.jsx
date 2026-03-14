@@ -3,6 +3,7 @@ import {
   Bell, Calendar, Snowflake, Link2, Database, ShoppingCart,
   RefreshCw, Download, Trash2, X, Clock,
 } from 'lucide-react';
+import PageHeader from '../components/layout/PageHeader';
 import { settingsApi, mealieApi, ticktickApi } from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
@@ -282,11 +283,13 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-xl mx-auto space-y-8 pb-24">
-      <header className="mb-2">
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-slate-400">Notifications, schedule &amp; integrations</p>
-      </header>
+    <div className="pb-24">
+      <PageHeader
+        title="Settings"
+        subtitle="Notifications, schedule and integrations"
+        sticky
+      />
+    <div className="px-4 md:px-0 max-w-xl mx-auto space-y-8">
 
       {/* ── Notification Preferences ───────────────────────────────────── */}
       <section>
@@ -629,6 +632,7 @@ export default function Settings() {
       <p className="text-center text-[11px] text-slate-600 pb-4">
         PrepTrack · Meal Prep Manager
       </p>
+    </div>
     </div>
   );
 }

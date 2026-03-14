@@ -39,6 +39,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
   const [showNotes,     setShowNotes]     = useState(false);
   const [category,      setCategory]      = useState('');
   const [mealieSlug,    setMealieSlug]    = useState('');
+  const [mealieImageId, setMealieImageId] = useState(null);
 
   // Autocomplete
   const [existingMeals,        setExistingMeals]        = useState([]);
@@ -89,10 +90,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     mealieDebounce.current = setTimeout(() => {
       mealieApi.searchRecipes(name)
         .then(({ recipes }) => {
-          const localSlugs = new Set(existingMeals.map(m => m.mealie_recipe_slug).filter(Boolean));
-          setMealieRecipeSuggestions(
-            (recipes || []).filter(r => !localSlugs.has(r.slug)).slice(0, 5)
-          );
+          setMealieRecipeSuggestions((recipes || []).slice(0, 5));
         })
         .catch(() => setMealieRecipeSuggestions([]));
     }, 300);
@@ -117,7 +115,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     setIsCustomExpiry(false); setFreezeDate(TODAY);
     setExpiryDate(addMonthsToDate(TODAY, months));
     setNotes(''); setShowNotes(false);
-    setCategory(''); setMealieSlug('');
+    setCategory(''); setMealieSlug(''); setMealieImageId(null);
     setMealieRecipeSuggestions([]); setShowSuggestions(false);
   }
 
@@ -142,7 +140,8 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     setName(recipe.name);
     setMealieSlug(recipe.slug);
     setCategory(recipe.recipeCategory?.[0]?.name || recipe.mealie_category_name || '');
-    if (recipe.recipeServings) setPortions(recipe.recipeServings);
+    if (recipe.imageId) setMealieImageId(recipe.imageId);
+    if (recipe.recipeServings) setPortions(Math.max(1, Math.round(Number(recipe.recipeServings) || 2)));
     setShowSuggestions(false);
     setMealieRecipeSuggestions([]);
   }
@@ -157,13 +156,16 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
       let mealId;
       if (existing) {
         mealId = existing.id;
+        const imageUrl = mealieImageId ? `/api/mealie/recipe-image/${mealieImageId}` : null;
         const needsUpdate =
           (mealieSlug && !existing.mealie_recipe_slug) ||
-          (category && !existing.mealie_category_name);
+          (category && !existing.mealie_category_name) ||
+          (imageUrl && !existing.image_url);
         if (needsUpdate) {
           await mealsApi.update(existing.id, {
             ...(mealieSlug && !existing.mealie_recipe_slug ? { mealie_recipe_slug: mealieSlug } : {}),
             ...(category && !existing.mealie_category_name ? { mealie_category_name: category } : {}),
+            ...(imageUrl && !existing.image_url ? { image_url: imageUrl } : {}),
           });
         }
       } else {
@@ -171,6 +173,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
           name: name.trim(),
           notes: notes || null,
           mealie_recipe_slug: mealieSlug || undefined,
+          ...(mealieImageId ? { image_url: `/api/mealie/recipe-image/${mealieImageId}` } : {}),
         });
         mealId = meal.id;
       }

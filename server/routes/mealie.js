@@ -272,14 +272,16 @@ router.post('/sync', async (req, res) => {
       page++;
     }
 
-    // Fetch PrepTrack meals that have no mealie slug or missing stored category metadata
+    // Fetch PrepTrack meals that need any Mealie metadata filled in
     const { rows: meals } = await pool.query(
-      `SELECT id, name
+      `SELECT id, name, mealie_recipe_slug, image_url
        FROM meals
        WHERE mealie_recipe_slug IS NULL
           OR mealie_recipe_slug = ''
           OR mealie_category_name IS NULL
-          OR BTRIM(mealie_category_name) = ''`
+          OR BTRIM(mealie_category_name) = ''
+          OR image_url IS NULL
+          OR BTRIM(image_url) = ''`
     );
 
     // Build a map of Mealie recipe name (lower) -> recipe metadata
@@ -287,6 +289,7 @@ router.post('/sync', async (req, res) => {
     for (const r of allRecipes) {
       mealieByName[r.name.toLowerCase()] = {
         slug: r.slug,
+        imageId: r.imageId,
         mealie_category_name: r.mealie_category_name || null,
         mealie_category_slug: r.mealie_category_slug || null,
       };
@@ -309,11 +312,15 @@ router.post('/sync', async (req, res) => {
             categorySlug = null;
           }
         }
+        const imageUrl = match.imageId ? `/api/mealie/recipe-image/${match.imageId}` : null;
         await pool.query(
           `UPDATE meals
-           SET mealie_recipe_slug = $1, mealie_category_name = $2, mealie_category_slug = $3
-           WHERE id = $4`,
-          [match.slug, categoryName, categorySlug, meal.id]
+           SET mealie_recipe_slug = $1,
+               mealie_category_name = $2,
+               mealie_category_slug = $3,
+               image_url = COALESCE(NULLIF(image_url, ''), $4)
+           WHERE id = $5`,
+          [match.slug, categoryName, categorySlug, imageUrl, meal.id]
         );
         linked++;
       }
