@@ -13,12 +13,12 @@ const DISPLAY_TO_DOW = [1, 2, 3, 4, 5, 6, 0];
 
 const SYNC_OPTS = ['manual', '6h', 'daily'];
 
-// ── Section header ──────────────────────────────────────────────────────────
-function SectionHeader({ icon: Icon, title }) {
+// ── Card section header (lives INSIDE the card) ──────────────────────────────
+function CardHeader({ icon: Icon, title }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
+    <div className="flex items-center gap-3 mb-6">
       <Icon size={16} className="text-primary shrink-0" />
-      <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{title}</h2>
+      <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{title}</h2>
     </div>
   );
 }
@@ -36,22 +36,22 @@ function SettingField({ label, settingKey, value, type = 'text', placeholder, ma
     try {
       await onSave({ [settingKey]: local });
     } catch {
-      setLocal(value ?? ''); // roll back on error
+      setLocal(value ?? '');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-1">
-      <label className="text-xs text-slate-500 font-medium">{label}</label>
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-slate-200">{label}</label>
       <input
         type={masked ? 'password' : type}
         value={local}
         placeholder={placeholder}
         onChange={e => setLocal(e.target.value)}
         onBlur={save}
-        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
+        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
       />
       {saving && <p className="text-[10px] text-slate-500">Saving…</p>}
     </div>
@@ -73,15 +73,15 @@ function ExpiryRow({ label, settingKey, value, onSave }) {
     try {
       await onSave({ [settingKey]: String(parsed) });
     } catch {
-      setLocal(value ?? ''); // roll back on error
+      setLocal(value ?? '');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-slate-800/60 last:border-0">
-      <span className="text-sm text-slate-200">{label}</span>
+    <div className="flex items-center justify-between py-3 border-b border-slate-800 last:border-0">
+      <span className="text-slate-200">{label}</span>
       <div className="flex items-center gap-2">
         <input
           type="number"
@@ -89,36 +89,39 @@ function ExpiryRow({ label, settingKey, value, onSave }) {
           value={local}
           onChange={e => setLocal(e.target.value)}
           onBlur={save}
-          className="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm text-center text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary/60"
+          className="w-16 bg-slate-950 border border-slate-800 rounded text-slate-200 text-center text-sm px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/60"
         />
-        <span className="text-xs text-slate-500">days{saving ? ' …' : ''}</span>
+        <span className="text-slate-400 text-sm">days{saving ? ' …' : ''}</span>
       </div>
     </div>
   );
 }
 
-// ── Schedule day cell ────────────────────────────────────────────────────────
-function DayCell({ day, lunchEnabled, dinnerEnabled, onToggle }) {
+// ── Schedule day column (label + lunch + dinner buttons) ─────────────────────
+function DayCol({ day, label, lunchEnabled, dinnerEnabled, onToggle }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 py-2">
-      <button
-        onClick={() => onToggle(day, 'lunch', !lunchEnabled)}
-        title={`${lunchEnabled ? 'Disable' : 'Enable'} lunch`}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-          lunchEnabled ? 'bg-primary/20 text-primary' : 'bg-slate-800/60 text-slate-600'
-        }`}
-      >
-        <span className="text-base leading-none">🍱</span>
-      </button>
-      <button
-        onClick={() => onToggle(day, 'dinner', !dinnerEnabled)}
-        title={`${dinnerEnabled ? 'Disable' : 'Enable'} dinner`}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-          dinnerEnabled ? 'bg-primary/20 text-primary' : 'bg-slate-800/60 text-slate-600'
-        }`}
-      >
-        <span className="text-base leading-none">🍽️</span>
-      </button>
+    <div className="text-center">
+      <div className="text-xs text-slate-400 mb-2">{label}</div>
+      <div className="space-y-2">
+        <button
+          onClick={() => onToggle(day, 'lunch', !lunchEnabled)}
+          title={`${lunchEnabled ? 'Disable' : 'Enable'} lunch`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center mx-auto text-xs font-medium transition-colors ${
+            lunchEnabled ? 'bg-primary/20 text-primary' : 'bg-slate-800/60 text-slate-600'
+          }`}
+        >
+          L
+        </button>
+        <button
+          onClick={() => onToggle(day, 'dinner', !dinnerEnabled)}
+          title={`${dinnerEnabled ? 'Disable' : 'Enable'} dinner`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center mx-auto text-xs font-medium transition-colors ${
+            dinnerEnabled ? 'bg-primary/20 text-primary' : 'bg-slate-800/60 text-slate-600'
+          }`}
+        >
+          D
+        </button>
+      </div>
     </div>
   );
 }
@@ -134,19 +137,17 @@ export default function Settings() {
   } = usePushNotifications();
 
   const [settings, setSettings]     = useState({});
-  const [schedule, setSchedule]     = useState([]); // 7 rows from DB (day_of_week 0–6)
+  const [schedule, setSchedule]     = useState([]);
   const [overrides, setOverrides]   = useState([]);
   const [weekStart, setWeekStart]   = useState('');
-  const [syncStatus, setSyncStatus] = useState(null); // null | 'syncing' | 'ok' | 'error'
+  const [syncStatus, setSyncStatus] = useState(null);
   const [clearing, setClearing]     = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearDone, setClearDone]   = useState(false);
   const [exportError, setExportError] = useState(null);
-  // Controlled state for prompt time inputs (initialized from settings once loaded)
   const [lunchTime, setLunchTime]   = useState('15:00');
   const [dinnerTime, setDinnerTime] = useState('20:00');
 
-  // Load everything on mount
   const load = useCallback(async () => {
     try {
       const [settRes, schedRes, ovRes] = await Promise.all([
@@ -171,7 +172,6 @@ export default function Settings() {
     setSettings(s => ({ ...s, ...updates }));
   }
 
-  // Schedule toggle
   async function handleScheduleToggle(displayIdx, mealType, enabled) {
     const dow = DISPLAY_TO_DOW[displayIdx];
     const row = schedule.find(r => r.day_of_week === dow) || { lunch_enabled: true, dinner_enabled: true };
@@ -185,7 +185,6 @@ export default function Settings() {
     ));
   }
 
-  // Override removal
   async function removeOverride(ws, dow, mt) {
     await settingsApi.deleteOverride(ws, dow, mt);
     setOverrides(prev => prev.filter(o =>
@@ -193,7 +192,6 @@ export default function Settings() {
     ));
   }
 
-  // TickTick OAuth connect
   function handleConnectTickTick() {
     const popup = window.open('/api/ticktick/auth', 'ticktick-oauth', 'width=620,height=720,noopener');
     if (!popup) {
@@ -203,14 +201,13 @@ export default function Settings() {
     function onMessage(e) {
       if (e.data?.type !== 'ticktick-oauth') return;
       window.removeEventListener('message', onMessage);
-      load(); // reload settings to reflect new token status
+      load();
     }
     window.addEventListener('message', onMessage);
   }
 
-  // TickTick shopping list reset
   const [resetting, setResetting] = useState(false);
-  const [resetStatus, setResetStatus] = useState(null); // null | 'ok' | 'error'
+  const [resetStatus, setResetStatus] = useState(null);
   async function handleResetShoppingList() {
     setResetting(true);
     try {
@@ -225,7 +222,6 @@ export default function Settings() {
     }
   }
 
-  // Mealie sync
   async function handleSync() {
     setSyncStatus('syncing');
     try {
@@ -238,7 +234,6 @@ export default function Settings() {
     }
   }
 
-  // Export
   function handleExport() {
     setExportError(null);
     settingsApi.export().then(blob => {
@@ -254,7 +249,6 @@ export default function Settings() {
     });
   }
 
-  // Clear inventory
   async function handleClear() {
     if (!confirmClear) { setConfirmClear(true); return; }
     setClearing(true);
@@ -268,13 +262,11 @@ export default function Settings() {
     }
   }
 
-  // Helper: get schedule row by display index
   function getRow(displayIdx) {
     const dow = DISPLAY_TO_DOW[displayIdx];
     return schedule.find(r => r.day_of_week === dow) || { lunch_enabled: true, dinner_enabled: true };
   }
 
-  // Helper: format override label
   function overrideLabel(o) {
     const dayName = DAYS[DISPLAY_TO_DOW.indexOf(o.day_of_week)] || `Day ${o.day_of_week}`;
     const meal    = o.meal_type.charAt(0).toUpperCase() + o.meal_type.slice(1);
@@ -283,356 +275,341 @@ export default function Settings() {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-24 md:pb-10">
       <PageHeader
         title="Settings"
-        subtitle="Notifications, schedule and integrations"
+        subtitle="Configure your meal prep preferences and integrations"
         sticky
       />
-    <div className="px-4 md:px-0 max-w-xl mx-auto space-y-8">
 
-      {/* ── Notification Preferences ───────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={Bell} title="Notification Preferences" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-4">
-          {/* Push toggle */}
-          {supported ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-200">Push Notifications</p>
-                <p className="text-xs text-slate-500">Real-time prompts on this device</p>
+      <div className="px-4 md:px-0 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-8">
+
+          {/* ── Left column ─────────────────────────────────────────────── */}
+          <div className="space-y-6">
+
+            {/* Weekly Schedule */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <CardHeader icon={Calendar} title="Weekly Schedule" />
+              <div className="grid grid-cols-7 gap-2">
+                {DAYS.map((d, i) => {
+                  const row = getRow(i);
+                  return (
+                    <DayCol
+                      key={d}
+                      day={i}
+                      label={d.toUpperCase()}
+                      lunchEnabled={!!row.lunch_enabled}
+                      dinnerEnabled={!!row.dinner_enabled}
+                      onToggle={handleScheduleToggle}
+                    />
+                  );
+                })}
               </div>
-              <button
-                disabled={pushLoading}
-                onClick={subscribed ? unsubscribe : subscribe}
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-                  subscribed ? 'bg-primary' : 'bg-slate-700'
-                }`}
-              >
-                <span className={`inline-block h-5 w-5 mt-0.5 rounded-full bg-white shadow transition-transform ${
-                  subscribed ? 'translate-x-5' : 'translate-x-0.5'
-                }`} />
-              </button>
-            </div>
-          ) : (
-            <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700">
-              <p className="text-sm font-medium text-slate-200">Push notifications unavailable</p>
-              <p className="text-xs text-slate-400 mt-1">
-                This browser on this device does not support web push for this app context.
-              </p>
-            </div>
-          )}
-          {pushError && <p className="text-red-400 text-xs">{pushError}</p>}
-
-          {/* Telegram */}
-          <SettingField
-            label="Telegram Bot Token"
-            settingKey="telegram_bot_token"
-            value=""
-            placeholder="Paste token to update"
-            masked
-            onSave={saveSettings}
-          />
-          <SettingField
-            label="Telegram Chat ID"
-            settingKey="telegram_chat_id"
-            value={settings.telegram_chat_id}
-            placeholder="e.g. 123456789"
-            onSave={saveSettings}
-          />
-
-          {/* Prompt times — controlled so they update when settings load */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                <Clock size={11} /> Lunch Prompt
-              </label>
-              <input
-                type="time"
-                value={lunchTime}
-                onChange={e => setLunchTime(e.target.value)}
-                onBlur={() => saveSettings({ lunch_prompt_time: lunchTime })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                <Clock size={11} /> Dinner Prompt
-              </label>
-              <input
-                type="time"
-                value={dinnerTime}
-                onChange={e => setDinnerTime(e.target.value)}
-                onBlur={() => saveSettings({ dinner_prompt_time: dinnerTime })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Weekly Schedule ────────────────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={Calendar} title="Weekly Schedule" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-slate-800">
-            {DAYS.map((d, i) => (
-              <div
-                key={d}
-                className={`py-2 text-center text-[10px] font-bold ${
-                  i >= 5 ? 'text-primary' : 'text-slate-500'
-                } border-r border-slate-800/50 last:border-r-0`}
-              >
-                {d.toUpperCase()}
-              </div>
-            ))}
-          </div>
-          {/* Toggle cells */}
-          <div className="grid grid-cols-7">
-            {DAYS.map((d, i) => {
-              const row = getRow(i);
-              return (
-                <div key={d} className="border-r border-slate-800/50 last:border-r-0">
-                  <DayCell
-                    day={i}
-                    lunchEnabled={!!row.lunch_enabled}
-                    dinnerEnabled={!!row.dinner_enabled}
-                    onToggle={handleScheduleToggle}
-                  />
+              {overrides.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-800 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    This week's overrides
+                  </p>
+                  {overrides.map(o => (
+                    <div
+                      key={`${o.day_of_week}-${o.meal_type}`}
+                      className="flex items-center justify-between text-xs text-slate-400"
+                    >
+                      <span className="text-primary font-medium">{overrideLabel(o)}</span>
+                      <button
+                        onClick={() => removeOverride(o.week_start, o.day_of_week, o.meal_type)}
+                        className="p-1 hover:text-red-400 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* This week's overrides */}
-          {overrides.length > 0 && (
-            <div className="border-t border-slate-800 px-4 py-3 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                This week's overrides
-              </p>
-              {overrides.map(o => (
-                <div
-                  key={`${o.day_of_week}-${o.meal_type}`}
-                  className="flex items-center justify-between text-xs text-slate-400"
-                >
-                  <span className="text-primary font-medium">{overrideLabel(o)}</span>
-                  <button
-                    onClick={() => removeOverride(o.week_start, o.day_of_week, o.meal_type)}
-                    className="p-1 hover:text-red-400 transition-colors"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      </section>
 
-      {/* ── Freezer Defaults ───────────────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={Snowflake} title="Freezer Defaults" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 px-4">
-          <ExpiryRow
-            label="Default freezer expiry"
-            settingKey="default_expiry_days"
-            value={settings.default_expiry_days ?? '90'}
-            onSave={saveSettings}
-          />
-          <ExpiryRow
-            label="Defrost lead time"
-            settingKey="defrost_lead_time"
-            value={settings.defrost_lead_time ?? '1'}
-            onSave={saveSettings}
-          />
-        </div>
-      </section>
+            {/* Notification Preferences */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+              <CardHeader icon={Bell} title="Notification Preferences" />
 
-      {/* ── Mealie Integration ─────────────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={Link2} title="Mealie Integration" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-4">
-          <SettingField
-            label="Mealie URL"
-            settingKey="mealie_url"
-            value={settings.mealie_url}
-            placeholder="https://mealie.yourdomain.com"
-            onSave={saveSettings}
-          />
-          <SettingField
-            label="API Key"
-            settingKey="mealie_api_key"
-            value=""
-            placeholder="Paste new key to update"
-            masked
-            onSave={saveSettings}
-          />
-
-          {/* Sync frequency */}
-          <div className="space-y-1.5">
-            <label className="text-xs text-slate-500 font-medium">Sync Frequency</label>
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-lg border border-slate-800">
-              {SYNC_OPTS.map(opt => {
-                const active = (settings.sync_frequency || '6h') === opt;
-                return (
+              {supported ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-200 font-medium">Push Notifications</p>
+                    <p className="text-sm text-slate-400">Real-time prompts on this device</p>
+                  </div>
                   <button
-                    key={opt}
-                    onClick={() => saveSettings({ sync_frequency: opt })}
-                    className={`py-2 rounded-md text-xs font-semibold transition-colors capitalize ${
-                      active ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200'
+                    disabled={pushLoading}
+                    onClick={subscribed ? unsubscribe : subscribe}
+                    className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+                      subscribed ? 'bg-primary' : 'bg-slate-700'
                     }`}
                   >
-                    {opt === '6h' ? '6h' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    <span className={`inline-block h-5 w-5 mt-0.5 rounded-full bg-white shadow transition-transform ${
+                      subscribed ? 'translate-x-5' : 'translate-x-0.5'
+                    }`} />
                   </button>
-                );
-              })}
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700">
+                  <p className="text-sm font-medium text-slate-200">Push notifications unavailable</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    This browser does not support web push for this app context.
+                  </p>
+                </div>
+              )}
+              {pushError && <p className="text-red-400 text-xs">{pushError}</p>}
+
+              <SettingField
+                label="Telegram Bot Token"
+                settingKey="telegram_bot_token"
+                value=""
+                placeholder="Paste token to update"
+                masked
+                onSave={saveSettings}
+              />
+              <SettingField
+                label="Telegram Chat ID"
+                settingKey="telegram_chat_id"
+                value={settings.telegram_chat_id}
+                placeholder="e.g. 123456789"
+                onSave={saveSettings}
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-200 flex items-center gap-1.5">
+                    <Clock size={13} className="text-slate-400" /> Lunch Prompt
+                  </label>
+                  <input
+                    type="time"
+                    value={lunchTime}
+                    onChange={e => setLunchTime(e.target.value)}
+                    onBlur={() => saveSettings({ lunch_prompt_time: lunchTime })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-200 flex items-center gap-1.5">
+                    <Clock size={13} className="text-slate-400" /> Dinner Prompt
+                  </label>
+                  <input
+                    type="time"
+                    value={dinnerTime}
+                    onChange={e => setDinnerTime(e.target.value)}
+                    onBlur={() => saveSettings({ dinner_prompt_time: dinnerTime })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary/60 min-h-[44px]"
+                  />
+                </div>
+              </div>
             </div>
+
+            {/* Freezer Defaults */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <CardHeader icon={Snowflake} title="Freezer Defaults" />
+              <ExpiryRow
+                label="Default freezer expiry"
+                settingKey="default_expiry_days"
+                value={settings.default_expiry_days ?? '90'}
+                onSave={saveSettings}
+              />
+              <ExpiryRow
+                label="Defrost lead time"
+                settingKey="defrost_lead_time"
+                value={settings.defrost_lead_time ?? '1'}
+                onSave={saveSettings}
+              />
+            </div>
+
           </div>
 
-          {/* Sync now */}
-          <button
-            onClick={handleSync}
-            disabled={syncStatus === 'syncing'}
-            className="flex w-full items-center justify-center gap-2 h-11 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors disabled:opacity-60"
-          >
-            <RefreshCw size={15} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
-            {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'ok' ? 'Synced!' : syncStatus === 'error' ? 'Sync failed' : 'Sync Now'}
-          </button>
-        </div>
-      </section>
+          {/* ── Right column ────────────────────────────────────────────── */}
+          <div className="space-y-6">
 
-      {/* ── TickTick Integration ───────────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={ShoppingCart} title="TickTick Integration" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-4">
-          <SettingField
-            label="Client ID"
-            settingKey="ticktick_client_id"
-            value={settings.ticktick_client_id}
-            placeholder="e.g. 59LnVBKwJeRmv4TD4F"
-            onSave={saveSettings}
-          />
-          <SettingField
-            label="Client Secret"
-            settingKey="ticktick_client_secret"
-            value=""
-            placeholder="Paste to update"
-            masked
-            onSave={saveSettings}
-          />
+            {/* Mealie Integration */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+              <CardHeader icon={Link2} title="Mealie Integration" />
 
-          {/* Connection status + button */}
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              <p className="text-sm font-medium text-slate-200">Connection</p>
-              <p className={`text-xs mt-0.5 ${settings.ticktick_api_token ? 'text-green-400' : 'text-slate-500'}`}>
-                {settings.ticktick_api_token ? 'Connected' : 'Not connected'}
-              </p>
+              <SettingField
+                label="URL"
+                settingKey="mealie_url"
+                value={settings.mealie_url}
+                placeholder="https://mealie.yourdomain.com"
+                onSave={saveSettings}
+              />
+              <SettingField
+                label="API Key"
+                settingKey="mealie_api_key"
+                value=""
+                placeholder="Paste new key to update"
+                masked
+                onSave={saveSettings}
+              />
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-slate-200">Sync Frequency</label>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-1">
+                  <div className="grid grid-cols-3 gap-1">
+                    {SYNC_OPTS.map(opt => {
+                      const active = (settings.sync_frequency || '6h') === opt;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => saveSettings({ sync_frequency: opt })}
+                          className={`px-3 py-2 text-sm rounded transition-colors ${
+                            active ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {opt === '6h' ? '6h' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSync}
+                disabled={syncStatus === 'syncing'}
+                className="w-full h-11 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+              >
+                <RefreshCw size={15} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+                {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'ok' ? 'Synced!' : syncStatus === 'error' ? 'Sync failed' : 'Sync Now'}
+              </button>
             </div>
-            <button
-              onClick={handleConnectTickTick}
-              disabled={!settings.ticktick_client_id}
-              className="px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {settings.ticktick_api_token ? 'Reconnect' : 'Connect'}
-            </button>
+
+            {/* TickTick Integration */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+              <CardHeader icon={ShoppingCart} title="TickTick Integration" />
+
+              <SettingField
+                label="Client ID"
+                settingKey="ticktick_client_id"
+                value={settings.ticktick_client_id}
+                placeholder="e.g. 59LnVBKwJeRmv4TD4F"
+                onSave={saveSettings}
+              />
+              <SettingField
+                label="Client Secret"
+                settingKey="ticktick_client_secret"
+                value=""
+                placeholder="Paste to update"
+                masked
+                onSave={saveSettings}
+              />
+
+              <div className="flex items-center justify-between py-3 border-t border-slate-800">
+                <div>
+                  <span className="text-slate-200">Connection</span>
+                  <div className={`text-sm mt-0.5 ${settings.ticktick_api_token ? 'text-green-400' : 'text-slate-500'}`}>
+                    {settings.ticktick_api_token ? 'Connected' : 'Not connected'}
+                  </div>
+                </div>
+                <button
+                  onClick={handleConnectTickTick}
+                  disabled={!settings.ticktick_client_id}
+                  className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {settings.ticktick_api_token ? 'Reconnect' : 'Connect'}
+                </button>
+              </div>
+
+              <SettingField
+                label="List ID (optional)"
+                settingKey="ticktick_list_id"
+                value={settings.ticktick_list_id}
+                placeholder="Leave empty for default list"
+                onSave={saveSettings}
+              />
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                <div>
+                  <p className="text-slate-200 font-medium">Shopping List</p>
+                  <p className="text-sm text-slate-400">
+                    {resetStatus === 'ok' ? 'Reset — next add will create a fresh task'
+                      : resetStatus === 'error' ? 'Reset failed'
+                      : 'Clear current shopping list items'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleResetShoppingList}
+                  disabled={resetting}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                >
+                  {resetting ? 'Resetting…' : 'Reset'}
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-500">
+                <div className="mb-1">OAuth Redirect URL:</div>
+                <div className="font-mono bg-slate-950 p-2 rounded border border-slate-800 break-all">
+                  {window.location.origin}/api/ticktick/callback
+                </div>
+              </div>
+            </div>
+
+            {/* Data Management */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-6 pt-6 pb-2">
+                <CardHeader icon={Database} title="Data Management" />
+              </div>
+              <div className="divide-y divide-slate-800">
+                <button
+                  onClick={handleExport}
+                  className="flex w-full items-center justify-between px-6 py-4 min-h-14 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <Download size={16} className={exportError ? 'text-red-400' : 'text-slate-400'} />
+                    <span className={`${exportError ? 'text-red-400' : 'text-slate-200'}`}>
+                      {exportError || 'Export data (JSON)'}
+                    </span>
+                  </div>
+                  <span className="text-slate-400 text-sm">›</span>
+                </button>
+
+                <button
+                  onClick={handleClear}
+                  disabled={clearing}
+                  className={`flex w-full items-center justify-between px-6 py-4 min-h-14 transition-colors cursor-pointer ${
+                    confirmClear ? 'bg-red-900/40 hover:bg-red-900/60' : 'hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Trash2 size={16} className={clearDone ? 'text-green-400' : 'text-red-400'} />
+                    <span className={clearDone ? 'text-green-400' : confirmClear ? 'text-red-300' : 'text-red-400'}>
+                      {clearDone
+                        ? 'Inventory cleared'
+                        : confirmClear
+                        ? 'Tap again to confirm — this cannot be undone'
+                        : 'Clear all inventory'}
+                    </span>
+                  </div>
+                  {clearing
+                    ? <RefreshCw size={14} className="text-red-400 animate-spin" />
+                    : <span className={`text-sm ${clearDone ? 'text-green-500' : 'text-red-400'}`}>›</span>
+                  }
+                </button>
+              </div>
+              {confirmClear && (
+                <div className="px-6 pb-4">
+                  <button
+                    onClick={() => setConfirmClear(false)}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
-
-          <SettingField
-            label="List ID (optional)"
-            settingKey="ticktick_list_id"
-            value={settings.ticktick_list_id}
-            placeholder="Leave blank for Inbox"
-            onSave={saveSettings}
-          />
-
-          {/* Reset shopping list */}
-          <div className="flex items-center justify-between pt-1 border-t border-slate-800">
-            <div>
-              <p className="text-sm font-medium text-slate-200">Shopping List</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {resetStatus === 'ok' ? 'Reset — next add will create a fresh task'
-                  : resetStatus === 'error' ? 'Reset failed'
-                  : 'If you deleted the task in TickTick, reset here'}
-              </p>
-            </div>
-            <button
-              onClick={handleResetShoppingList}
-              disabled={resetting}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition-colors disabled:opacity-40"
-            >
-              {resetting ? 'Resetting…' : 'Reset'}
-            </button>
-          </div>
-
-          <p className="text-xs text-slate-500">
-            Register <span className="text-slate-400 font-mono">{window.location.origin}/api/ticktick/callback</span> as the OAuth Redirect URL in your{' '}
-            <a href="https://developer.ticktick.com" target="_blank" rel="noreferrer" className="text-primary underline">TickTick developer app</a>.
-          </p>
-        </div>
-      </section>
-
-      {/* ── Data Management ────────────────────────────────────────────── */}
-      <section>
-        <SectionHeader icon={Database} title="Data Management" />
-        <div className="rounded-xl bg-slate-900 border border-slate-800 divide-y divide-slate-800 overflow-hidden">
-          <button
-            onClick={handleExport}
-            className="flex w-full items-center justify-between px-4 py-4 hover:bg-slate-800/60 transition-colors min-h-[56px]"
-          >
-            <div className="flex items-center gap-3">
-              <Download size={16} className={exportError ? 'text-red-400' : 'text-slate-400'} />
-              <span className={`text-sm font-medium ${exportError ? 'text-red-400' : 'text-slate-200'}`}>
-                {exportError || 'Export data (JSON)'}
-              </span>
-            </div>
-            <span className="text-slate-500 text-xs">→</span>
-          </button>
-
-          <button
-            onClick={handleClear}
-            disabled={clearing}
-            className={`flex w-full items-center justify-between px-4 py-4 transition-colors min-h-[56px] ${
-              confirmClear
-                ? 'bg-red-900/40 hover:bg-red-900/60'
-                : 'hover:bg-slate-800/60'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Trash2 size={16} className={clearDone ? 'text-green-400' : 'text-red-400'} />
-              <span className={`text-sm font-medium ${
-                clearDone ? 'text-green-400' : confirmClear ? 'text-red-300' : 'text-red-400'
-              }`}>
-                {clearDone
-                  ? 'Inventory cleared'
-                  : confirmClear
-                  ? 'Tap again to confirm — this cannot be undone'
-                  : 'Clear all inventory'}
-              </span>
-            </div>
-            {clearing ? (
-              <RefreshCw size={14} className="text-red-400 animate-spin" />
-            ) : (
-              <span className={`text-xs ${clearDone ? 'text-green-500' : 'text-red-500'}`}>→</span>
-            )}
-          </button>
         </div>
 
-        {confirmClear && (
-          <button
-            onClick={() => setConfirmClear(false)}
-            className="mt-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            Cancel
-          </button>
-        )}
-      </section>
-
-      <p className="text-center text-[11px] text-slate-600 pb-4">
-        PrepTrack · Meal Prep Manager
-      </p>
-    </div>
+        <p className="text-center text-xs text-slate-600 py-8">
+          PrepTrack · Meal Prep Manager
+        </p>
+      </div>
     </div>
   );
 }

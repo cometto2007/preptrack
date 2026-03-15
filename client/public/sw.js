@@ -1,12 +1,15 @@
 // PrepTrack Service Worker — Phase 5
 // Bump CACHE_VERSION on each deployment to evict stale assets from all clients.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `preptrack-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon.svg',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/favicon-32x32.png',
 ];
 
 // ── Install: pre-cache static shell ─────────────────────────────────────────
@@ -89,8 +92,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'PrepTrack', {
       body: data.body,
-      icon: '/icons/icon.svg',
-      badge: '/icons/icon.svg',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-96x96.png',
       data: data.url,
       actions: data.actions || [],
       tag: 'preptrack-prompt', // collapses duplicate notifications

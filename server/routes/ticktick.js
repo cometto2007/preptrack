@@ -215,7 +215,9 @@ function buildItemTitle(entry) {
     .filter(Boolean)
     .join(' + ');
 
-  const left = [name, amounts ? `— ${amounts}` : ''].filter(Boolean).join(' ');
+  // When no quantities are available, show ×N so repeated adds are visible
+  const countSuffix = !amounts && (entry.count || 1) > 1 ? ` ×${entry.count}` : '';
+  const left = [name + countSuffix, amounts ? `— ${amounts}` : ''].filter(Boolean).join(' ');
   return `${emoji} ${left} (${sources})`;
 }
 
@@ -334,6 +336,7 @@ async function handleShoppingListBatch(req, res) {
     // Aggregate ingredients from all recipes with scaling
     let added = 0;
     let merged = 0;
+    const touchedIds = new Set(); // items added/merged this request — will be reset to unchecked
 
     for (const { slug, recipeName, portions } of recipes) {
       // Handle recipeName-only entries (no slug) - add as note items
@@ -379,12 +382,12 @@ async function handleShoppingListBatch(req, res) {
       }
 
       // Calculate scale factor
-      // portions: null = use full recipe (scale = 1.0)
-      // portions: number = scale = portions / recipeServings
+      // portions = number of batches to cook (multiplier, e.g. 2 = double all ingredients)
       let scaleFactor = 1.0;
-      if (portions != null && recipeServings != null && recipeServings > 0) {
-        scaleFactor = portions / recipeServings;
+      if (portions != null) {
+        scaleFactor = Number(portions) || 1.0;
       }
+
 
       // Per-recipe dedup: prevents double-counting if Mealie has duplicate ingredient rows
       // Reset for each recipe so intentionally adding the same recipe twice still works
@@ -414,15 +417,20 @@ async function handleShoppingListBatch(req, res) {
             entry.amounts.push({ qty: scaledQty, unit });
           }
           if (!entry.sources.includes(title)) entry.sources.push(title);
+          entry.count = (entry.count || 1) + 1;
+          touchedIds.add(entry.id);
           merged++;
         } else {
-          itemMap[key] = {
+          const newEntry = {
             id: crypto.randomBytes(4).toString('hex'),
             amounts: [{ qty: scaledQty, unit }],
+            count: 1,
             name: foodName,
             category: inferCategory(ing),
             sources: [title],
           };
+          itemMap[key] = newEntry;
+          touchedIds.add(newEntry.id);
           added++;
         }
       }
@@ -454,7 +462,8 @@ async function handleShoppingListBatch(req, res) {
       .map(entry => ({
         id: entry.id,
         title: buildItemTitle(entry),
-        status: statusById[entry.id] ?? 0,
+        // Items touched this request are reset to unchecked so they show up as new
+        status: touchedIds.has(entry.id) ? 0 : (statusById[entry.id] ?? 0),
       }));
 
     // Create or update the TickTick task
@@ -467,9 +476,9 @@ async function handleShoppingListBatch(req, res) {
       } catch (err) {
         console.warn('[ticktick] Failed to update TickTick task:', err.message);
         // Task was permanently deleted or update failed — fall through to create a fresh one
+        // Do NOT reset itemMap — the current session's accumulated ingredients must be preserved
         taskId = null;
         projectId = null;
-        itemMap = {};
       }
     }
 

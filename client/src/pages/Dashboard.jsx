@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Search, Plus, RefreshCw, Package2, Utensils, Clock, AlertCircle } from 'lucide-react';
 import { useMeals } from '../hooks/useMeals';
 import { useSettings } from '../hooks/useSettings';
@@ -25,7 +25,14 @@ function SkeletonCard() {
 }
 
 export default function Dashboard() {
-  const { meals, loading, error, reload } = useMeals();
+  const [showEmpty, setShowEmpty] = useState(() => localStorage.getItem('dashboard_showEmpty') === '1');
+
+  useEffect(() => {
+    localStorage.setItem('dashboard_showEmpty', showEmpty ? '1' : '0');
+  }, [showEmpty]);
+
+  useEffect(() => () => clearTimeout(successToastTimer.current), []);
+  const { meals, loading, error, reload } = useMeals(undefined, { includeEmpty: showEmpty });
   const settings = useSettings();
   const mealieUrl = settings?.mealie_url?.replace(/\/$/, '') || '';
   const [search, setSearch] = useState('');
@@ -33,6 +40,8 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [counterMeal, setCounterMeal] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [successToast, setSuccessToast] = useState(null);
+  const successToastTimer = useRef(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetPrefill, setSheetPrefill] = useState('');
 
@@ -111,15 +120,6 @@ export default function Dashboard() {
     setActiveFilter('All');
   }, [filterChips, activeFilter]);
 
-  async function handleDirectDecrement(meal) {
-    try {
-      await mealsApi.decrement(meal.id, { quantity: 1, source: 'manual' });
-      await reload();
-    } catch (e) {
-      setActionError(e.message);
-    }
-  }
-
   async function handleRemove(count) {
     if (!counterMeal) return;
     setActionError(null);
@@ -127,6 +127,10 @@ export default function Dashboard() {
       await mealsApi.decrement(counterMeal.id, { quantity: count, source: 'manual' });
       await reload();
       setCounterMeal(null);
+      const msg = `Removed ${count} portion${count !== 1 ? 's' : ''}`;
+      setSuccessToast(msg);
+      clearTimeout(successToastTimer.current);
+      successToastTimer.current = setTimeout(() => setSuccessToast(null), 2500);
     } catch (e) {
       setActionError(e.message);
     }
@@ -266,6 +270,17 @@ export default function Dashboard() {
                 {`${f.label} (${f.count})`}
               </button>
             ))}
+            <button
+              onClick={() => setShowEmpty(v => !v)}
+              aria-pressed={showEmpty}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ml-auto shrink-0 ${
+                showEmpty
+                  ? 'bg-slate-600 text-slate-200'
+                  : 'bg-slate-800/30 text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+              }`}
+            >
+              {showEmpty ? 'Hide Empty' : 'Show Empty'}
+            </button>
           </div>
         </section>
 
@@ -280,14 +295,15 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-4 lg:gap-5">
               {filtered.map(meal => (
-                <MealCard
-                  key={meal.id}
-                  meal={meal}
-                  mealieUrl={mealieUrl}
-                  onDecrement={m => { setActionError(null); handleDirectDecrement(m); }}
-                  onIncrement={m => openSheet(m.name)}
-                  onCounterTap={m => { setActionError(null); setCounterMeal(m); }}
-                />
+                <div key={meal.id} className={meal.total_portions === 0 ? 'opacity-50' : ''}>
+                  <MealCard
+                    meal={meal}
+                    mealieUrl={mealieUrl}
+                    onDecrement={m => { if (m.total_portions > 0) { setActionError(null); setCounterMeal(m); } }}
+                    onIncrement={m => openSheet(m.name)}
+                    onCounterTap={m => { if (m.total_portions > 0) { setActionError(null); setCounterMeal(m); } }}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -312,6 +328,13 @@ export default function Dashboard() {
           onConfirm={handleRemove}
           onClose={() => { setCounterMeal(null); setActionError(null); }}
         />
+      )}
+
+      {/* Success toast */}
+      {successToast && (
+        <div className="fixed bottom-4 left-4 right-4 z-[60] p-3 bg-green-600/90 rounded-xl text-white text-sm text-center">
+          {successToast}
+        </div>
       )}
 
       {/* Action error toast */}

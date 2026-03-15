@@ -146,8 +146,16 @@ export default function QuickCounter({
     ? calcExpiry(freezeDate, expiryDays)
     : null;
 
+  // Slide-in animation state — declared here so setOpen is in scope for the
+  // confirm handlers below (useCallback deps must not reference undeclared vars).
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   // Single-item handlers
-  const canDecrease = count > 0;
+  const canDecrease = mode === 'remove' ? count > 1 : count > 0;
   const canIncrease = maxCount == null || count < maxCount;
 
   const handleSingleConfirm = useCallback(() => {
@@ -155,10 +163,13 @@ export default function QuickCounter({
       console.error('QuickCounter: onConfirm is not a function');
       return;
     }
+    // Animate out first, then fire onConfirm so the parent's async work
+    // runs while the sheet is sliding away (parent unmounts via onClose after 350ms).
+    setOpen(false);
     if (mode === 'add') {
-      onConfirm(count, freezeDate, expiryDate);
+      setTimeout(() => onConfirm(count, freezeDate, expiryDate), 350);
     } else {
-      onConfirm(count);
+      setTimeout(() => onConfirm(count), 350);
     }
   }, [onConfirm, mode, count, freezeDate, expiryDate]);
 
@@ -203,50 +214,63 @@ export default function QuickCounter({
         const count = multiCounts[i] ?? 0;
         if (count === 0) return null;
         if (mode === 'add') {
-          return {
-            id: item.id,
-            count,
-            freezeDate,
-            expiryDate,
-          };
+          return { id: item.id, count, freezeDate, expiryDate };
         } else {
-          return {
-            id: item.id,
-            count,
-          };
+          return { id: item.id, count };
         }
       })
       .filter(Boolean);
 
-    onConfirm(results);
+    // Animate out, then deliver results after sheet has slid away
+    setOpen(false);
+    setTimeout(() => onConfirm(results), 350);
   }, [isMultiItem, onConfirm, items, multiCounts, mode, freezeDate, expiryDate]);
 
   const anyMultiCounted = isMultiItem && multiCounts.some(c => c > 0);
   const allMultiZero = isMultiItem && multiCounts.every(c => c === 0);
 
+  function handleClose() {
+    setOpen(false);
+    setTimeout(onClose, 350);
+  }
+
   // Handle Escape key to close
   useEffect(() => {
     if (typeof onClose !== 'function') return;
     function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        onClose();
-      }
+      if (e.key === 'Escape') handleClose();
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render empty state (after all hooks)
   if (isEmptyItemsArray) {
     return (
       <>
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]" onClick={onClose} />
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-          <div className="w-full max-w-md bg-bg-app rounded-t-2xl shadow-2xl border-t border-slate-800 p-6">
+        <div
+          role="presentation"
+          onClick={handleClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 45,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            opacity: open ? 1 : 0,
+            transition: 'opacity 0.3s',
+          }}
+        />
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center" onClick={handleClose}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md bg-bg-app rounded-t-2xl shadow-2xl border-t border-slate-800 p-6"
+            style={{
+              transform: open ? 'translateY(0)' : 'translateY(100%)',
+              transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+            }}
+          >
             <p className="text-slate-400 text-center">No items to display</p>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full mt-4 py-3 bg-slate-800 rounded-lg text-slate-300"
             >
               Close
@@ -269,15 +293,26 @@ export default function QuickCounter({
   return (
     <>
       {/* Backdrop — z-[45] sits above BottomNav (z-40) but below the sheet (z-50) */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]" onClick={onClose} />
+      <div
+        role="presentation"
+        onClick={handleClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 45,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          opacity: open ? 1 : 0,
+          transition: 'opacity 0.3s',
+        }}
+      />
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-        <div 
-          className={`
-            w-full max-w-md bg-bg-app rounded-t-2xl shadow-2xl border-t border-slate-800 overflow-hidden
-            flex flex-col max-h-[80vh]
-          `}
+      {/* Sheet outer — intercepts taps outside max-w-md */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center" onClick={handleClose}>
+        <div
+          onClick={e => e.stopPropagation()}
+          className="w-full max-w-md bg-bg-app rounded-t-2xl shadow-2xl border-t border-slate-800 overflow-hidden flex flex-col max-h-[85vh]"
+          style={{
+            transform: open ? 'translateY(0)' : 'translateY(100%)',
+            transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+          }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="quickcounter-title"
@@ -409,7 +444,11 @@ export default function QuickCounter({
                 type="button"
                 onClick={handleSingleConfirm}
                 disabled={count === 0}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all disabled:opacity-40"
+                className={`w-full text-white font-bold py-4 rounded-xl shadow-lg transition-all disabled:opacity-40 ${
+                  mode === 'remove'
+                    ? 'bg-red-500 hover:bg-red-500/90 shadow-red-500/20'
+                    : 'bg-primary hover:bg-primary/90 shadow-primary/20'
+                }`}
               >
                 {mode === 'add'
                   ? 'Confirm Freezing'
@@ -418,7 +457,7 @@ export default function QuickCounter({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full py-2 text-slate-400 font-medium text-sm hover:text-slate-200 transition-colors"
             >
               Cancel

@@ -1,10 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Calendar,
-  Settings,
-  Snowflake,
-} from 'lucide-react';
+import { LayoutDashboard, Calendar, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/',         label: 'Dashboard', Icon: LayoutDashboard },
@@ -34,8 +29,8 @@ export default function Sidebar({ isOpen, onClose }) {
         `}
       >
         {/* Logo */}
-        <div className="p-6 flex items-center gap-3 border-b border-[#243b56]">
-          <Snowflake size={22} className="text-primary flex-shrink-0" />
+        <div className="py-3 flex items-center justify-center gap-4 border-b border-[#243b56] overflow-hidden">
+          <img src="/icons/icon-192x192.png" alt="PrepTrack" className="h-16 w-16 flex-shrink-0 rounded-xl" />
           <div>
             <h1 className="font-bold text-lg tracking-tight leading-none">PrepTrack</h1>
             <p className="text-xs text-[#8ea3bb] mt-0.5">Meal Prep Manager</p>

@@ -43,7 +43,7 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
       name: r.name,
       // Only check by default if stock is missing or low
       checked: r.status === 'missing' || r.status === 'low' || r.status === 'partial',
-      portions: (r.recipeServings && r.recipeServings > 0 ? r.recipeServings : 1) * (r.quantity || 1), // Default to recipe yield × planned quantity
+      portions: r.quantity || 1, // Number of batches to cook (multiplier)
       recipeServings: r.recipeServings && r.recipeServings > 0 ? r.recipeServings : 1,
       imageUrl: r.imageUrl,
       quantity: r.quantity || 1, // From meal plan (e.g., ×2 if recipe appears twice)
@@ -92,7 +92,7 @@ function ShoppingListOverlayInner({ recipes, onClose, onAdded }) {
     setSelections(prev => prev.map(s => ({
       ...s,
       checked: true,
-      portions: s.recipeServings * s.quantity, // match the initial default
+      portions: s.quantity, // match the initial default
     })));
   }
 
