@@ -25,10 +25,10 @@ function SkeletonCard() {
 }
 
 export default function Dashboard() {
-  const [showEmpty, setShowEmpty] = useState(() => localStorage.getItem('dashboard_showEmpty') === '1');
+  const [showEmpty, setShowEmpty] = useState(() => { try { return localStorage.getItem('dashboard_showEmpty') === '1'; } catch { return false; } });
 
   useEffect(() => {
-    localStorage.setItem('dashboard_showEmpty', showEmpty ? '1' : '0');
+    try { localStorage.setItem('dashboard_showEmpty', showEmpty ? '1' : '0'); } catch { /* storage unavailable */ }
   }, [showEmpty]);
 
   useEffect(() => () => clearTimeout(successToastTimer.current), []);
@@ -46,7 +46,7 @@ export default function Dashboard() {
   const [sheetPrefill, setSheetPrefill] = useState('');
 
   function openSheet(name = '') { setSheetPrefill(name); setSheetOpen(true); }
-  function handleSheetClose() { setSheetOpen(false); setSheetPrefill(''); reload(); }
+  function handleSheetClose() { setSheetOpen(false); setTimeout(() => { setSheetPrefill(''); reload(); }, 350); }
 
   const [prompts, setPrompts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -286,7 +286,7 @@ export default function Dashboard() {
 
         {/* Inventory */}
         <section className="px-4 md:px-0">
-          {loading ? (
+          {loading && meals.length === 0 ? (
             <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-4 lg:gap-5">
               <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
             </div>

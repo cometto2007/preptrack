@@ -47,12 +47,14 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
   const [showSuggestions,      setShowSuggestions]      = useState(false);
 
   // Submission / feedback
-  const [submitting, setSubmitting] = useState(false);
-  const [toast,      setToast]      = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [submitError,  setSubmitError]  = useState(null);
+  const [toast,        setToast]        = useState(false);
 
-  const inputRef       = useRef(null);
-  const mealieDebounce = useRef(null);
-  const toastTimer     = useRef(null);
+  const inputRef        = useRef(null);
+  const mealieDebounce  = useRef(null);
+  const toastTimer      = useRef(null);
+  const submittingRef   = useRef(false);
 
   // Cancel toast timer on unmount
   useEffect(() => () => clearTimeout(toastTimer.current), []);
@@ -69,9 +71,10 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     }
   }, [freezeDate, shelfMonths, isCustomExpiry]);
 
-  // On open: load existing meals, apply prefills, focus input
+  // On open: reset form, load existing meals, apply prefills, focus input
   useEffect(() => {
     if (!isOpen) return;
+    reset();
     mealsApi.list(null, { includeEmpty: true })
       .then(({ meals }) => setExistingMeals(meals))
       .catch(() => {});
@@ -105,7 +108,7 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }); // intentionally no deps — always fresh closure
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -117,9 +120,10 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     setNotes(''); setShowNotes(false);
     setCategory(''); setMealieSlug(''); setMealieImageId(null);
     setMealieRecipeSuggestions([]); setShowSuggestions(false);
+    setSubmitError(null);
   }
 
-  function handleClose() { reset(); onClose(); }
+  function handleClose() { onClose(); }
 
   function setShelf(months) { setShelfMonths(months); setIsCustomExpiry(false); }
 
@@ -140,15 +144,17 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
     setName(recipe.name);
     setMealieSlug(recipe.slug);
     setCategory(recipe.recipeCategory?.[0]?.name || recipe.mealie_category_name || '');
-    if (recipe.imageId) setMealieImageId(recipe.imageId);
+    if (recipe.imageId && /^[\w-]+$/.test(recipe.imageId)) setMealieImageId(recipe.imageId);
     if (recipe.recipeServings) setPortions(Math.max(1, Math.round(Number(recipe.recipeServings) || 2)));
     setShowSuggestions(false);
     setMealieRecipeSuggestions([]);
   }
 
   async function handleSubmit() {
-    if (!name.trim() || submitting) return;
+    if (!name.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const existing = existingMeals.find(
         m => m.name.toLowerCase() === name.trim().toLowerCase()
@@ -187,8 +193,9 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
       toastTimer.current = setTimeout(() => setToast(false), 2000);
       handleClose();
     } catch (err) {
-      console.error('AddToFreezerSheet submit error:', err);
+      setSubmitError(err.message || 'Failed to save. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -352,7 +359,32 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
             </div>
           </div>
 
-          {/* ── Summary row: Frozen / Portions / Expires ── */}
+          {/* ── Portions row ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'rgba(30,41,59,0.35)',
+            border: '1px solid rgba(148,163,184,0.08)',
+            borderRadius: 12, padding: '12px 16px',
+          }}>
+            <div style={s.cellLabel}>Portions</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={() => setPortions(p => Math.max(1, p - 1))}
+                style={{ width: 32, height: 32, background: 'rgba(148,163,184,0.08)', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 8, color: '#94a3b8', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
+              >
+                −
+              </button>
+              <div style={{ width: 36, textAlign: 'center', fontSize: 18, fontWeight: 600, color: '#f1f5f9' }}>{portions}</div>
+              <button
+                onClick={() => setPortions(p => p + 1)}
+                style={{ width: 32, height: 32, background: 'rgba(43,140,238,0.1)', border: '1px solid rgba(43,140,238,0.2)', borderRadius: 8, color: '#2b8cee', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* ── Frozen / Expires row ── */}
           <div style={{
             display: 'flex', alignItems: 'stretch',
             background: 'rgba(30,41,59,0.35)',
@@ -368,28 +400,6 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
                 onChange={e => setFreezeDate(e.target.value)}
                 style={s.dateInput}
               />
-            </div>
-
-            <div style={{ width: 1, background: 'rgba(148,163,184,0.08)', flexShrink: 0 }} />
-
-            {/* Portions */}
-            <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ ...s.cellLabel, textAlign: 'center' }}>Portions</div>
-              <div style={{ display: 'flex', alignItems: 'center', height: 28 }}>
-                <button
-                  onClick={() => setPortions(p => Math.max(1, p - 1))}
-                  style={{ width: 28, height: 28, background: 'rgba(148,163,184,0.08)', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 8, color: '#94a3b8', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
-                >
-                  −
-                </button>
-                <div style={{ width: 32, textAlign: 'center', fontSize: 18, fontWeight: 600, color: '#f1f5f9' }}>{portions}</div>
-                <button
-                  onClick={() => setPortions(p => p + 1)}
-                  style={{ width: 28, height: 28, background: 'rgba(43,140,238,0.1)', border: '1px solid rgba(43,140,238,0.2)', borderRadius: 8, color: '#2b8cee', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
-                >
-                  +
-                </button>
-              </div>
             </div>
 
             <div style={{ width: 1, background: 'rgba(148,163,184,0.08)', flexShrink: 0 }} />
@@ -430,6 +440,13 @@ export default function AddToFreezerSheet({ isOpen, onClose, prefillName, prefil
               />
             )}
           </div>
+
+          {/* ── Submit error ── */}
+          {submitError && (
+            <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, color: '#f87171', fontSize: 13 }}>
+              {submitError}
+            </div>
+          )}
 
           {/* ── Submit ── */}
           <button

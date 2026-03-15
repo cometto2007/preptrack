@@ -360,7 +360,7 @@ export default function Plan() {
     setSheetPrefillSlug(slug);
     setSheetOpen(true);
   }
-  function handleSheetClose() { setSheetOpen(false); setSheetPrefillName(''); setSheetPrefillSlug(''); reload(); }
+  function handleSheetClose() { setSheetOpen(false); setTimeout(() => { setSheetPrefillName(''); setSheetPrefillSlug(''); reload(); }, 350); }
 
   const summary = data?.summary ?? { total: 0, covered: 0, partial: 0, missing: 0 };
   const coveragePct = summary.total > 0 ? Math.round((summary.covered / summary.total) * 100) : 0;
@@ -395,7 +395,7 @@ export default function Plan() {
           dayOptions={dayOptions}
           days={days}
           setDays={setDays}
-          loading={loading}
+          loading={loading && !data}
           summary={summary}
           coveragePct={coveragePct}
           nextUncoveredLabel={meta.nextUncoveredLabel}
@@ -406,7 +406,7 @@ export default function Plan() {
 
         {error && <ErrorBlock error={error} />}
 
-        {loading && !error && (
+        {loading && !data && !error && (
           <>
             <div className="space-y-5 md:hidden">
               <DaySkeletonMobile />
@@ -420,7 +420,7 @@ export default function Plan() {
           </>
         )}
 
-        {!loading && !error && data && (
+        {!error && data && (
           <>
             <div className="space-y-5 md:hidden">
               {data.days.map(day => (
