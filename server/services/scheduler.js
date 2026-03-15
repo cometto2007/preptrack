@@ -279,7 +279,26 @@ async function start() {
       "SELECT key, value FROM settings WHERE key IN ('lunch_prompt_time', 'dinner_prompt_time')"
     );
     const map = Object.fromEntries(rows.map(r => [r.key, r.value]));
-    scheduleJobs(map.lunch_prompt_time || '15:00', map.dinner_prompt_time || '20:00');
+    const lunchTime  = map.lunch_prompt_time  || '15:00';
+    const dinnerTime = map.dinner_prompt_time || '20:00';
+    scheduleJobs(lunchTime, dinnerTime);
+
+    // Catch-up: if we started after the scheduled time and the prompt hasn't
+    // run yet today, fire it immediately so restarts don't silently miss it.
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+
+    const [lh, lm] = lunchTime.split(':').map(Number);
+    if (nowMins >= lh * 60 + lm) {
+      console.log('[scheduler] Catch-up: running lunch prompt at startup');
+      runLunchPrompt();
+    }
+
+    const [dh, dm] = dinnerTime.split(':').map(Number);
+    if (nowMins >= dh * 60 + dm) {
+      console.log('[scheduler] Catch-up: running dinner prompt at startup');
+      runDinnerPrompt();
+    }
   } catch (err) {
     console.error('[scheduler] Failed to start:', err.message);
   }
